@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+type ResizePosition = "bottom-left" | "bottom-right";
+
 interface ResizeHandleProps {
+  position: ResizePosition;
   minWidth?: number;
   minHeight?: number;
   maxWidth?: number;
@@ -11,6 +14,7 @@ interface ResizeHandleProps {
 }
 
 export default function ResizeHandle({
+  position,
   minWidth = 400,
   minHeight = 200,
   maxWidth = 1200,
@@ -20,9 +24,11 @@ export default function ResizeHandle({
   const [isResizing, setIsResizing] = useState(false);
   const startPosRef = useRef({ x: 0, y: 0 });
   const startSizeRef = useRef({ width: 0, height: 0 });
+  const startWindowPosRef = useRef({ x: 0, y: 0 });
   const tauriApisRef = useRef<{
     getCurrentWindow: typeof import("@tauri-apps/api/window").getCurrentWindow;
     PhysicalSize: typeof import("@tauri-apps/api/dpi").PhysicalSize;
+    PhysicalPosition: typeof import("@tauri-apps/api/dpi").PhysicalPosition;
   } | null>(null);
 
   // Pre-load Tauri APIs
@@ -30,8 +36,8 @@ export default function ResizeHandle({
     const loadApis = async () => {
       try {
         const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const { PhysicalSize } = await import("@tauri-apps/api/dpi");
-        tauriApisRef.current = { getCurrentWindow, PhysicalSize };
+        const { PhysicalSize, PhysicalPosition } = await import("@tauri-apps/api/dpi");
+        tauriApisRef.current = { getCurrentWindow, PhysicalSize, PhysicalPosition };
       } catch (error) {
         console.error("Failed to load Tauri APIs:", error);
       }
@@ -49,10 +55,12 @@ export default function ResizeHandle({
       const { getCurrentWindow } = tauriApisRef.current;
       const currentWindow = getCurrentWindow();
       const size = await currentWindow.innerSize();
+      const windowPos = await currentWindow.outerPosition();
 
       // Store physical pixels
       startPosRef.current = { x: e.screenX, y: e.screenY };
       startSizeRef.current = { width: size.width, height: size.height };
+      startWindowPosRef.current = { x: windowPos.x, y: windowPos.y };
       setIsResizing(true);
     } catch (error) {
       console.error("Failed to get window size:", error);
@@ -68,9 +76,22 @@ export default function ResizeHandle({
       const deltaX = e.screenX - startPosRef.current.x;
       const deltaY = e.screenY - startPosRef.current.y;
 
-      // Calculate new size in physical pixels
-      let newWidth = startSizeRef.current.width + deltaX;
-      let newHeight = startSizeRef.current.height + deltaY;
+      // Calculate new size based on position
+      let newWidth: number;
+      let newHeight: number;
+      let newX: number | null = null;
+
+      if (position === "bottom-right") {
+        // Right corner: expand width to the right, height down
+        newWidth = startSizeRef.current.width + deltaX;
+        newHeight = startSizeRef.current.height + deltaY;
+      } else {
+        // Left corner: expand width to the left (inverse deltaX), height down
+        newWidth = startSizeRef.current.width - deltaX;
+        newHeight = startSizeRef.current.height + deltaY;
+        // Window position needs to move left as width increases
+        newX = startWindowPosRef.current.x + deltaX;
+      }
 
       // Apply constraints (using physical pixels, approximate for Retina)
       const scaleFactor = window.devicePixelRatio || 1;
@@ -79,12 +100,26 @@ export default function ResizeHandle({
       const minH = minHeight * scaleFactor;
       const maxH = maxHeight * scaleFactor;
 
-      newWidth = Math.max(minW, Math.min(maxW, newWidth));
+      // Clamp width and adjust X position accordingly for left resize
+      const clampedWidth = Math.max(minW, Math.min(maxW, newWidth));
       newHeight = Math.max(minH, Math.min(maxH, newHeight));
 
+      if (position === "bottom-left" && newX !== null) {
+        // Adjust X based on clamped width difference
+        const widthDiff = newWidth - clampedWidth;
+        newX = newX + widthDiff;
+      }
+
+      newWidth = clampedWidth;
+
       try {
-        const { getCurrentWindow, PhysicalSize } = tauriApisRef.current;
+        const { getCurrentWindow, PhysicalSize, PhysicalPosition } = tauriApisRef.current;
         const currentWindow = getCurrentWindow();
+
+        // For left resize, set position first to avoid flicker
+        if (position === "bottom-left" && newX !== null) {
+          await currentWindow.setPosition(new PhysicalPosition(Math.round(newX), startWindowPosRef.current.y));
+        }
 
         // Use PhysicalSize to match innerSize() return type
         await currentWindow.setSize(new PhysicalSize(Math.round(newWidth), Math.round(newHeight)));
@@ -98,9 +133,10 @@ export default function ResizeHandle({
       setIsResizing(false);
     };
 
+    const cursor = position === "bottom-right" ? "nwse-resize" : "nesw-resize";
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-    document.body.style.cursor = "nwse-resize";
+    document.body.style.cursor = cursor;
     document.body.style.userSelect = "none";
 
     return () => {
@@ -109,11 +145,13 @@ export default function ResizeHandle({
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
-  }, [isResizing, minWidth, minHeight, maxWidth, maxHeight, onResize]);
+  }, [isResizing, position, minWidth, minHeight, maxWidth, maxHeight, onResize]);
+
+  const isLeft = position === "bottom-left";
 
   return (
     <div
-      className={`resize-handle ${isResizing ? "resize-handle-active" : ""}`}
+      className={`resize-handle resize-handle-${position} ${isResizing ? "resize-handle-active" : ""}`}
       onMouseDown={handleMouseDown}
       title="Drag to resize"
     >
@@ -123,6 +161,7 @@ export default function ResizeHandle({
         viewBox="0 0 12 12"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
+        style={isLeft ? { transform: "scaleX(-1)" } : undefined}
       >
         {/* Diagonal lines pattern like iTerm2/macOS */}
         <line x1="10" y1="2" x2="2" y2="10" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />

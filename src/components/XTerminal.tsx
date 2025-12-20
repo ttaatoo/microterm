@@ -5,12 +5,41 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
+import { loadSettings } from "@/lib/settings";
 
 // Timing constants
 /** Delay before restarting PTY session after process exit (ms) */
 const PTY_RESTART_DELAY_MS = 1000;
 /** Delay before focusing terminal after window focus - allows window to fully render (ms) */
 const WINDOW_FOCUS_DELAY_MS = 50;
+
+// Key codes
+const ESC_KEY = "\x1b";
+
+// Base theme colors (One Dark Pro Vivid)
+const BASE_THEME = {
+  foreground: "#abb2bf",
+  cursor: "#528bff",
+  cursorAccent: "#282c34",
+  selectionBackground: "rgba(62, 68, 81, 0.5)",
+  selectionForeground: "#ffffff",
+  black: "#282c34",
+  red: "#ef596f",
+  green: "#89ca78",
+  yellow: "#e5c07b",
+  blue: "#52adf2",
+  magenta: "#d55fde",
+  cyan: "#2bbac5",
+  white: "#abb2bf",
+  brightBlack: "#5c6370",
+  brightRed: "#ef596f",
+  brightGreen: "#89ca78",
+  brightYellow: "#e5c07b",
+  brightBlue: "#52adf2",
+  brightMagenta: "#d55fde",
+  brightCyan: "#2bbac5",
+  brightWhite: "#ffffff",
+};
 
 interface PtyOutput {
   session_id: string;
@@ -22,7 +51,11 @@ interface PtyExit {
   exit_code: number | null;
 }
 
-export default function XTerminal() {
+interface XTerminalProps {
+  opacity?: number;
+}
+
+export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -31,6 +64,16 @@ export default function XTerminal() {
   const unlistenExitRef = useRef<(() => void) | null>(null);
   const initializedRef = useRef(false);
 
+  // Update terminal background when opacity changes
+  useEffect(() => {
+    if (xtermRef.current && propOpacity !== undefined) {
+      xtermRef.current.options.theme = {
+        ...BASE_THEME,
+        background: `rgba(40, 44, 52, ${propOpacity})`,
+      };
+    }
+  }, [propOpacity]);
+
   const initTerminal = useCallback(async () => {
     if (!terminalRef.current || initializedRef.current) return;
     initializedRef.current = true;
@@ -38,6 +81,10 @@ export default function XTerminal() {
     // Import Tauri APIs dynamically
     const { invoke } = await import("@tauri-apps/api/core");
     const { listen } = await import("@tauri-apps/api/event");
+
+    // Load saved settings for initial opacity
+    const settings = loadSettings();
+    const initialOpacity = propOpacity ?? settings.opacity;
 
     // Create terminal instance with One Dark Pro Vivid theme
     const terminal = new Terminal({
@@ -48,30 +95,8 @@ export default function XTerminal() {
       lineHeight: 1.2,
       letterSpacing: 0,
       theme: {
-        // One Dark Pro Vivid theme with transparency
-        background: "rgba(40, 44, 52, 0.92)",
-        foreground: "#abb2bf",
-        cursor: "#528bff",
-        cursorAccent: "#282c34",
-        selectionBackground: "rgba(62, 68, 81, 0.5)",
-        selectionForeground: "#ffffff",
-        // Vivid colors
-        black: "#282c34",
-        red: "#ef596f",         // Vivid red
-        green: "#89ca78",       // Vivid green
-        yellow: "#e5c07b",      // Yellow
-        blue: "#52adf2",        // Vivid blue
-        magenta: "#d55fde",     // Vivid magenta/purple
-        cyan: "#2bbac5",        // Vivid cyan
-        white: "#abb2bf",       // Default text
-        brightBlack: "#5c6370", // Comments/dimmed
-        brightRed: "#ef596f",
-        brightGreen: "#89ca78",
-        brightYellow: "#e5c07b",
-        brightBlue: "#52adf2",
-        brightMagenta: "#d55fde",
-        brightCyan: "#2bbac5",
-        brightWhite: "#ffffff",
+        ...BASE_THEME,
+        background: `rgba(40, 44, 52, ${initialOpacity})`,
       },
       allowTransparency: true,
       scrollback: 10000,
@@ -131,6 +156,16 @@ export default function XTerminal() {
 
     // Handle user input
     terminal.onData(async (data) => {
+      // Intercept ESC key to hide window instead of sending to PTY
+      if (data === ESC_KEY) {
+        try {
+          await invoke("hide_window");
+        } catch (error) {
+          console.error("Failed to hide window:", error);
+        }
+        return;
+      }
+
       if (sessionIdRef.current) {
         try {
           await invoke("write_to_pty", {
@@ -191,7 +226,7 @@ export default function XTerminal() {
       fitAddonRef.current = null;
       initializedRef.current = false;
     };
-  }, []);
+  }, [propOpacity]);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;

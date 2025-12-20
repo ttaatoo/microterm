@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
-use tauri::{command, AppHandle, Emitter};
+use tauri::{command, AppHandle, Emitter, Manager};
 use tokio::io::AsyncReadExt;
 use tokio::io::BufReader as TokioBufReader;
 use tokio::process::Command as TokioCommand;
@@ -215,4 +215,28 @@ pub async fn complete_command(prefix: String) -> Result<Vec<String>, String> {
     completions.dedup();
 
     Ok(completions)
+}
+
+/// Hide the main window and update visibility state
+#[command]
+pub fn hide_window(app: AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or("Main window not found")?;
+
+    #[cfg(target_os = "macos")]
+    {
+        use objc2::runtime::AnyObject;
+        let ns_window = window.ns_window().map_err(|e| e.to_string())? as *mut AnyObject;
+        unsafe {
+            crate::macos::hide_window(ns_window);
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        window.hide().map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }

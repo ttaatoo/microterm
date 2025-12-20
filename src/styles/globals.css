@@ -18,9 +18,7 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: rgba(40, 44, 52, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: transparent;
   overflow: hidden;
   position: relative;
 }
@@ -45,17 +43,42 @@ body {
 .xterminal-container {
   width: 100%;
   height: 100%;
-  padding: 8px;
   background: transparent;
   overflow: hidden;
 }
 
+/* Apply padding via xterm's internal structure */
 .xterminal-container .xterm {
-  height: 100%;
+  padding: 10px 12px;
 }
 
-.xterminal-container .xterm-viewport {
-  background: transparent !important;
+/* Settings button */
+.settings-button {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  z-index: 1000;
+}
+
+.settings-button:hover {
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.settings-button svg {
+  width: 13px;
+  height: 13px;
 }
 
 /* Terminal loading state */
@@ -91,19 +114,26 @@ body {
 
 /* Resize handle styles */
 .resize-handle {
-  position: absolute;
+  position: fixed;
   bottom: 4px;
-  right: 4px;
-  width: 16px;
-  height: 16px;
-  cursor: nwse-resize;
+  width: 12px;
+  height: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.2);
   transition: color 0.15s ease;
   z-index: 1000;
-  border-radius: 2px;
+}
+
+.resize-handle-bottom-right {
+  right: 4px;
+  cursor: nwse-resize;
+}
+
+.resize-handle-bottom-left {
+  left: 4px;
+  cursor: nesw-resize;
 }
 
 .resize-handle:hover {
@@ -117,4 +147,139 @@ body {
 
 .resize-handle svg {
   pointer-events: none;
+}
+
+/* Settings panel styles */
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.settings-panel {
+  background: #21252b;
+  border: 1px solid #3e4451;
+  border-radius: 8px;
+  width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: scaleIn 0.15s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #3e4451;
+}
+
+.settings-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #abb2bf;
+}
+
+.settings-close {
+  background: none;
+  border: none;
+  color: #5c6370;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.settings-close:hover {
+  color: #abb2bf;
+}
+
+.settings-content {
+  padding: 16px;
+}
+
+.settings-item {
+  margin-bottom: 16px;
+}
+
+.settings-item:last-child {
+  margin-bottom: 0;
+}
+
+.settings-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #abb2bf;
+  margin-bottom: 8px;
+}
+
+.settings-value {
+  color: #61afef;
+  font-weight: 500;
+}
+
+.settings-slider {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: #3e4451;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #61afef;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.settings-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.settings-slider::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+}
+
+.settings-hint {
+  font-size: 11px;
+  color: #5c6370;
+  margin-top: 8px;
 }
