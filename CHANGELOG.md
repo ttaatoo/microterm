@@ -32,5 +32,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript frontend with React 18
 - xterm.js terminal emulator
 
-[Unreleased]: https://github.com/user/menubar-terminal/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/user/menubar-terminal/releases/tag/v0.1.0
+[Unreleased]: https://github.com/ttaatoo/menubar-terminal/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ttaatoo/menubar-terminal/releases/tag/v0.1.0
