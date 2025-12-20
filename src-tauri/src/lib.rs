@@ -15,42 +15,39 @@ use tauri::{Manager, WebviewWindow};
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
-    use cocoa::base::{id, nil, BOOL, NO, YES};
-    use objc::runtime::Class;
-    use objc::{msg_send, sel, sel_impl};
+    use block2::RcBlock;
+    use objc2::rc::Retained;
+    use objc2::runtime::AnyObject;
+    use objc2_app_kit::{NSEvent, NSEventMask, NSWindow, NSWindowCollectionBehavior};
+    use objc2_foundation::NSPoint;
     use parking_lot::RwLock;
+    use std::ptr::NonNull;
     use std::sync::atomic::{AtomicBool, Ordering};
 
     /// Global flag to track if window is open
     static WINDOW_VISIBLE: AtomicBool = AtomicBool::new(false);
 
     /// Window state protected by RwLock for thread safety
-    /// Note: We still need unsafe for the actual Objective-C calls, but the state
-    /// management is now safe.
     static WINDOW_STATE: RwLock<WindowState> = RwLock::new(WindowState::new());
 
     struct WindowState {
-        window_ptr: Option<id>,
-        event_monitor: id,
+        window_ptr: Option<*mut AnyObject>,
+        event_monitor: Option<Retained<AnyObject>>,
     }
 
     impl WindowState {
         const fn new() -> Self {
             Self {
                 window_ptr: None,
-                event_monitor: nil,
+                event_monitor: None,
             }
         }
     }
 
-    // SAFETY: id (Objective-C pointer) is Send+Sync when properly managed
+    // SAFETY: The window pointer is only accessed from the main thread
+    // and the event monitor is properly retained
     unsafe impl Send for WindowState {}
     unsafe impl Sync for WindowState {}
-
-    fn get_class(name: &str) -> *const Class {
-        Class::get(name).unwrap_or_else(|| panic!("Class {} not found", name))
-    }
 
     pub fn set_window_visible(visible: bool) {
         WINDOW_VISIBLE.store(visible, Ordering::SeqCst);
@@ -64,83 +61,71 @@ mod macos {
     ///
     /// # Safety
     /// Caller must ensure `ns_window` is a valid NSWindow pointer.
-    pub unsafe fn configure_panel_behavior(ns_window: id) {
+    pub unsafe fn configure_panel_behavior(ns_window: *mut AnyObject) {
         // Store window pointer for event monitor (thread-safe)
         {
             let mut state = WINDOW_STATE.write();
             state.window_ptr = Some(ns_window);
         }
 
+        // SAFETY: ns_window is a valid NSWindow pointer
+        let window: &NSWindow = unsafe { &*(ns_window as *const NSWindow) };
+
         // Set window level to floating (like menubar panels)
         // NSFloatingWindowLevel = 3
-        const NS_FLOATING_WINDOW_LEVEL: i64 = 3;
-        let _: () = msg_send![ns_window, setLevel: NS_FLOATING_WINDOW_LEVEL];
+        window.setLevel(3);
 
         // Set collection behavior for proper spaces handling
-        let behavior = NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-            | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
-            | NSWindowCollectionBehavior::NSWindowCollectionBehaviorIgnoresCycle;
-        ns_window.setCollectionBehavior_(behavior);
+        let behavior = NSWindowCollectionBehavior::CanJoinAllSpaces
+            | NSWindowCollectionBehavior::Stationary
+            | NSWindowCollectionBehavior::IgnoresCycle;
+        window.setCollectionBehavior(behavior);
 
         // Make window not hide on deactivate
-        let _: () = msg_send![ns_window, setHidesOnDeactivate: NO];
+        window.setHidesOnDeactivate(false);
 
         // Setup global event monitor for clicks outside the window
         setup_global_click_monitor();
     }
 
     /// Setup a global event monitor to detect clicks outside the window.
-    ///
-    /// # Safety
-    /// This function is called from configure_panel_behavior which ensures
-    /// proper initialization order.
-    unsafe fn setup_global_click_monitor() {
-        let nsevent_class = get_class("NSEvent") as id;
-
+    fn setup_global_click_monitor() {
         // Remove existing monitor if any (thread-safe access)
         {
             let mut state = WINDOW_STATE.write();
-            if state.event_monitor != nil {
-                let _: () = msg_send![nsevent_class, removeMonitor: state.event_monitor];
-                state.event_monitor = nil;
+            if let Some(monitor) = state.event_monitor.take() {
+                // SAFETY: monitor is a valid event monitor object
+                unsafe {
+                    NSEvent::removeMonitor(&monitor);
+                }
             }
         }
 
         // NSEventMaskLeftMouseDown | NSEventMaskRightMouseDown
-        const NS_EVENT_MASK_LEFT_MOUSE_DOWN: u64 = 1 << 1;
-        const NS_EVENT_MASK_RIGHT_MOUSE_DOWN: u64 = 1 << 3;
-        let event_mask: u64 = NS_EVENT_MASK_LEFT_MOUSE_DOWN | NS_EVENT_MASK_RIGHT_MOUSE_DOWN;
+        let event_mask = NSEventMask::LeftMouseDown | NSEventMask::RightMouseDown;
 
-        // Create the handler block using the block crate
-        let handler = block::ConcreteBlock::new(move |_event: id| {
+        // Create the handler block
+        let handler = RcBlock::new(move |_event: NonNull<NSEvent>| {
             handle_global_click();
         });
-        let handler = handler.copy();
 
         // Add global monitor
-        let monitor: id = msg_send![nsevent_class,
-            addGlobalMonitorForEventsMatchingMask: event_mask
-            handler: &*handler
-        ];
-
-        // Keep the block alive by leaking it (it needs to live for the lifetime of the app)
-        // This is intentional - the event monitor needs the block to persist for the app's lifetime
-        std::mem::forget(handler);
+        let monitor = NSEvent::addGlobalMonitorForEventsMatchingMask_handler(event_mask, &handler);
 
         // Store monitor (thread-safe)
-        {
+        if let Some(monitor) = monitor {
             let mut state = WINDOW_STATE.write();
-            state.event_monitor = monitor;
+            state.event_monitor = Some(monitor);
         }
     }
 
     /// Handle a global mouse click event
-    unsafe fn handle_global_click() {
+    fn handle_global_click() {
         if !is_window_visible_flag() {
             return;
         }
 
-        let window = {
+        let window_ptr = {
             let state = WINDOW_STATE.read();
             match state.window_ptr {
                 Some(w) => w,
@@ -148,12 +133,14 @@ mod macos {
             }
         };
 
+        // SAFETY: window_ptr is a valid NSWindow pointer
+        let window: &NSWindow = unsafe { &*(window_ptr as *const NSWindow) };
+
         // Get the mouse location in screen coordinates
-        let nsevent_class = get_class("NSEvent") as id;
-        let mouse_location: cocoa::foundation::NSPoint = msg_send![nsevent_class, mouseLocation];
+        let mouse_location: NSPoint = NSEvent::mouseLocation();
 
         // Get window frame in screen coordinates
-        let frame: cocoa::foundation::NSRect = msg_send![window, frame];
+        let frame = window.frame();
 
         // Check if click is inside window
         let inside = mouse_location.x >= frame.origin.x
@@ -163,29 +150,44 @@ mod macos {
 
         if !inside {
             // Hide window
-            let _: () = msg_send![window, orderOut: nil];
+            window.orderOut(None);
             set_window_visible(false);
         }
     }
 
-    pub unsafe fn show_window(ns_window: id) {
+    /// Show the window without activating the app.
+    ///
+    /// # Safety
+    /// Caller must ensure `ns_window` is a valid NSWindow pointer.
+    pub unsafe fn show_window(ns_window: *mut AnyObject) {
+        let window: &NSWindow = unsafe { &*(ns_window as *const NSWindow) };
+
         // Show window without activating the app
-        let _: () = msg_send![ns_window, orderFrontRegardless];
+        window.orderFrontRegardless();
 
         // Make the window key so it can receive input
-        let _: () = msg_send![ns_window, makeKeyWindow];
+        window.makeKeyWindow();
 
         set_window_visible(true);
     }
 
-    pub unsafe fn hide_window(ns_window: id) {
-        let _: () = msg_send![ns_window, orderOut: nil];
+    /// Hide the window.
+    ///
+    /// # Safety
+    /// Caller must ensure `ns_window` is a valid NSWindow pointer.
+    pub unsafe fn hide_window(ns_window: *mut AnyObject) {
+        let window: &NSWindow = unsafe { &*(ns_window as *const NSWindow) };
+        window.orderOut(None);
         set_window_visible(false);
     }
 
-    pub unsafe fn is_ns_window_visible(ns_window: id) -> bool {
-        let visible: BOOL = msg_send![ns_window, isVisible];
-        visible == YES
+    /// Check if the window is visible.
+    ///
+    /// # Safety
+    /// Caller must ensure `ns_window` is a valid NSWindow pointer.
+    pub unsafe fn is_ns_window_visible(ns_window: *mut AnyObject) -> bool {
+        let window: &NSWindow = unsafe { &*(ns_window as *const NSWindow) };
+        window.isVisible()
     }
 }
 
@@ -200,8 +202,11 @@ fn position_window<R: tauri::Runtime>(window: &WebviewWindow<R>) {
             let window_width = 800.0;
 
             let x = screen_position.x + ((screen_width - window_width) / 2.0) as i32;
-            let menubar_height = 25;
-            let y = screen_position.y + menubar_height;
+            // Position window directly below menubar with small gap
+            // macOS menubar is typically 24-25 logical pixels, but screen_position.y
+            // already accounts for the menubar on the primary display
+            let gap = 4; // Small gap between menubar and window
+            let y = screen_position.y + gap;
 
             let _ = window.set_position(Position::Physical(PhysicalPosition { x, y }));
         }
@@ -216,6 +221,7 @@ pub fn run() {
             commands::execute_command,
             commands::execute_command_stream,
             commands::complete_command,
+            commands::hide_window,
             pty_commands::create_pty_session,
             pty_commands::write_to_pty,
             pty_commands::resize_pty,
@@ -229,7 +235,7 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             {
                 // Get the NSWindow handle
-                let ns_window = window.ns_window().unwrap() as cocoa::base::id;
+                let ns_window = window.ns_window().unwrap() as *mut objc2::runtime::AnyObject;
 
                 unsafe {
                     macos::configure_panel_behavior(ns_window);
@@ -252,7 +258,8 @@ pub fn run() {
                     {
                         #[cfg(target_os = "macos")]
                         {
-                            let ns_window = window_for_tray.ns_window().unwrap() as cocoa::base::id;
+                            let ns_window =
+                                window_for_tray.ns_window().unwrap() as *mut objc2::runtime::AnyObject;
 
                             unsafe {
                                 if macos::is_ns_window_visible(ns_window) {
@@ -281,7 +288,7 @@ pub fn run() {
             // Hide window initially
             #[cfg(target_os = "macos")]
             {
-                let ns_window = window.ns_window().unwrap() as cocoa::base::id;
+                let ns_window = window.ns_window().unwrap() as *mut objc2::runtime::AnyObject;
                 unsafe {
                     macos::hide_window(ns_window);
                 }

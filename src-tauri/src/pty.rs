@@ -121,12 +121,12 @@ impl PtyManager {
             }
 
             // Wait for the child process to exit
-            let exit_code = child.wait().ok().and_then(|status| {
+            let exit_code = child.wait().ok().map(|status| {
                 if status.success() {
-                    Some(0)
+                    0
                 } else {
                     // portable-pty ExitStatus doesn't expose exit code directly
-                    Some(1)
+                    1
                 }
             });
 
