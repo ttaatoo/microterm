@@ -1,0 +1,56 @@
+{
+  "productName": "µTerm",
+  "version": "0.1.0",
+  "identifier": "com.microterm.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:3000",
+    "frontendDist": "../out"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "µTerm",
+        "width": 800,
+        "height": 500,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "macOSPrivateApi": true
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "resources": [],
+    "copyright": "Copyright (c) 2024 µTerm Contributors",
+    "category": "Utility",
+    "shortDescription": "µTerm - A micro terminal in your menubar",
+    "longDescription": "µTerm is a lightweight, fast terminal that lives in your macOS menubar for quick command execution",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.13",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "entitlements": null,
+      "files": {
+        "Info.plist": "./Info.plist"
+      }
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    }
+  }
+}
