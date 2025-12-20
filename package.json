@@ -1,0 +1,47 @@
+{
+  "name": "microterm",
+  "version": "0.1.0",
+  "description": "A micro terminal that lives in your macOS menubar. Lightweight, fast, always one click away.",
+  "author": "µTerm Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/user/menubar-terminal.git"
+  },
+  "homepage": "https://github.com/user/menubar-terminal#readme",
+  "bugs": {
+    "url": "https://github.com/user/menubar-terminal/issues"
+  },
+  "keywords": [
+    "terminal",
+    "menubar",
+    "macos",
+    "tauri",
+    "rust",
+    "desktop-app"
+  ],
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "tauri": "npx tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0",
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "xterm": "^5.3.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}
