@@ -1,0 +1,120 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow: hidden;
+  font-family: "SF Mono", "Monaco", "Menlo", "Ubuntu Mono", "Consolas", monospace;
+  background: transparent;
+  color: #abb2bf;
+}
+
+.main-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(40, 44, 52, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Animation for dropdown */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.main-container {
+  animation: slideDown 0.2s ease-out;
+}
+
+/* XTerminal styles */
+.xterminal-container {
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.xterminal-container .xterm {
+  height: 100%;
+}
+
+.xterminal-container .xterm-viewport {
+  background: transparent !important;
+}
+
+/* Terminal loading state */
+.terminal-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #5c6370;
+  font-size: 13px;
+  font-family: "SF Mono", Menlo, Monaco, monospace;
+  background: transparent;
+}
+
+/* Hide default scrollbar, only show xterm's */
+.xterminal-container .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+  background: #282c34;
+}
+
+.xterminal-container .xterm-viewport::-webkit-scrollbar-track {
+  background: #282c34;
+}
+
+.xterminal-container .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #4b5263;
+  border-radius: 4px;
+}
+
+.xterminal-container .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: #5c6370;
+}
+
+/* Resize handle styles */
+.resize-handle {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.2);
+  transition: color 0.15s ease;
+  z-index: 1000;
+  border-radius: 2px;
+}
+
+.resize-handle:hover {
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.resize-handle-active {
+  color: rgba(97, 175, 239, 0.6);
+}
+
+.resize-handle svg {
+  pointer-events: none;
+}
