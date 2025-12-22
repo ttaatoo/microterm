@@ -3,9 +3,11 @@
 [![CI](https://github.com/ttaatoo/menubar-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/ttaatoo/menubar-terminal/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-blue?logo=tauri)](https://tauri.app)
-[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)](https://www.apple.com/macos/)
+[![Platform](https://img.shields.io/badge/platform-macOS_only-lightgrey?logo=apple)](https://www.apple.com/macos/)
 
 A micro terminal that lives in your macOS menubar. Lightweight, fast, always one click away.
+
+> **Note:** This application is **macOS only**. It uses native macOS APIs (NSPanel, NSEvent, menubar/tray) that are not available on other platforms.
 
 Built with **Rust**, **Tauri 2.0**, and **Next.js 14**.
 
