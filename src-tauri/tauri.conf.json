@@ -1,7 +1,7 @@
 {
   "productName": "µTerm",
   "version": "1.0.0",
-  "identifier": "com.microterm.dev",
+  "identifier": "com.microterm.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",

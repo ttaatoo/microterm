@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use tauri::{AppHandle, Emitter};
+use tracing::{debug, error, info};
 
 /// Minimum allowed PTY columns
 const MIN_PTY_COLS: u16 = 20;
@@ -71,6 +72,7 @@ impl PtyManager {
         validate_pty_size(cols, rows)?;
 
         let session_id = uuid::Uuid::new_v4().to_string();
+        debug!(session_id = %session_id, cols, rows, "Creating PTY session");
 
         let pty_system = native_pty_system();
         let pair = pty_system
@@ -144,13 +146,9 @@ impl PtyManager {
         let session_arc = Arc::new(Mutex::new(session));
         let session_arc_for_thread = session_arc.clone();
 
-        // Store the session
-        {
-            let mut sessions = self.sessions.lock();
-            sessions.insert(session_id.clone(), session_arc.clone());
-        }
-
         // Spawn a thread to read output from PTY and emit events
+        // NOTE: We spawn the thread BEFORE inserting into HashMap to avoid leaking
+        // orphaned sessions if thread spawn fails
         let session_id_clone = session_id.clone();
         let app_clone = app.clone();
         let sessions_clone = self.sessions.clone();
@@ -181,7 +179,7 @@ impl PtyManager {
                     Err(e) => {
                         // Don't log error if shutdown was requested
                         if !shutdown_flag_clone.load(Ordering::SeqCst) {
-                            eprintln!("PTY read error: {}", e);
+                            error!(session_id = %session_id_clone, error = %e, "PTY read error");
                         }
                         break;
                     }
@@ -217,12 +215,20 @@ impl PtyManager {
             sessions.remove(&session_id_clone);
         });
 
-        // Store the thread handle
+        // Store the thread handle FIRST (before inserting into HashMap)
         {
             let mut session_guard = session_arc.lock();
             session_guard.reader_thread = Some(reader_thread);
         }
 
+        // NOW insert into HashMap - thread is already running and properly attached
+        // This ensures we never have orphaned sessions in the HashMap
+        {
+            let mut sessions = self.sessions.lock();
+            sessions.insert(session_id.clone(), session_arc);
+        }
+
+        info!(session_id = %session_id, "PTY session created successfully");
         Ok(session_id)
     }
 
@@ -270,6 +276,7 @@ impl PtyManager {
     }
 
     pub fn close_session(&self, session_id: &str) -> Result<(), String> {
+        debug!(session_id = %session_id, "Closing PTY session");
         let session = {
             let mut sessions = self.sessions.lock();
             sessions.remove(session_id)
@@ -297,6 +304,9 @@ impl PtyManager {
                 // Join the thread - it should exit quickly after child is killed
                 let _ = handle.join();
             }
+            info!(session_id = %session_id, "PTY session closed");
+        } else {
+            debug!(session_id = %session_id, "PTY session not found (already closed)");
         }
 
         Ok(())

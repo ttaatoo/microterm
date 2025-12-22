@@ -16,6 +16,8 @@ use tauri::{
     tray::TrayIconEvent,
     Emitter, Listener, Manager, WebviewWindow,
 };
+use tracing::{error, info};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[cfg(target_os = "macos")]
 pub mod macos {
@@ -69,16 +71,31 @@ pub mod macos {
 
     /// Configure the window to behave like a menubar panel.
     ///
+    /// This sets up the window with floating level, proper space behavior,
+    /// and installs a global click monitor to hide the window when clicking outside.
+    ///
     /// # Safety
-    /// Caller must ensure `ns_window` is a valid NSWindow pointer.
+    ///
+    /// This function is unsafe because it dereferences a raw pointer and calls
+    /// Objective-C methods that require main thread execution.
+    ///
+    /// Caller must ensure:
+    /// 1. `ns_window` points to a valid, live NSWindow object obtained from Tauri
+    /// 2. The NSWindow will remain valid for the duration of this call
+    /// 3. This function is called from the main thread
+    /// 4. No other threads are mutating the window concurrently
+    ///
+    /// # Panics
+    ///
+    /// Panics if unable to retain the NSWindow (indicates memory corruption or invalid pointer).
     pub unsafe fn configure_panel_behavior(ns_window: *mut AnyObject) {
         // Convert raw pointer to Retained<NSWindow> for proper memory management
-        // SAFETY: ns_window is a valid NSWindow pointer provided by Tauri
+        // SAFETY: Caller guarantees ns_window is a valid NSWindow pointer from Tauri
         let window: Retained<NSWindow> = unsafe {
             let window_ref: &NSWindow = &*(ns_window as *const NSWindow);
-            // Retain the window to ensure it's not deallocated
+            // Retain the window to ensure it's not deallocated while we use it
             Retained::retain(window_ref as *const NSWindow as *mut NSWindow)
-                .expect("Failed to retain NSWindow")
+                .expect("Failed to retain NSWindow - this indicates memory corruption or invalid pointer")
         };
 
         // Set window level to floating (like menubar panels)
@@ -181,9 +198,22 @@ pub mod macos {
 
     /// Show the window and activate the app to receive keyboard input.
     ///
+    /// This makes the window visible, activates the application (so it can receive
+    /// keyboard input), and makes it the key window.
+    ///
     /// # Safety
-    /// Caller must ensure `ns_window` is a valid NSWindow pointer.
+    ///
+    /// This function is unsafe because it dereferences a raw pointer.
+    ///
+    /// Caller must ensure:
+    /// 1. `ns_window` points to a valid, live NSWindow object
+    /// 2. This function is called from the main thread (required for NSApp.activate)
+    ///
+    /// # Panics
+    ///
+    /// Panics if not called from the main thread (MainThreadMarker::new() fails).
     pub unsafe fn show_window(ns_window: *mut AnyObject) {
+        // SAFETY: Caller guarantees ns_window is valid
         let window: &NSWindow = unsafe { &*(ns_window as *const NSWindow) };
 
         // Show window
@@ -203,11 +233,15 @@ pub mod macos {
         set_window_visible(true);
     }
 
-    /// Hide the window.
+    /// Hide the window by ordering it out.
     ///
     /// # Safety
-    /// Caller must ensure `ns_window` is a valid NSWindow pointer.
+    ///
+    /// This function is unsafe because it dereferences a raw pointer.
+    ///
+    /// Caller must ensure `ns_window` points to a valid, live NSWindow object.
     pub unsafe fn hide_window(ns_window: *mut AnyObject) {
+        // SAFETY: Caller guarantees ns_window is valid
         let window: &NSWindow = unsafe { &*(ns_window as *const NSWindow) };
         window.orderOut(None);
         set_window_visible(false);
@@ -216,8 +250,12 @@ pub mod macos {
     /// Check if the window is visible.
     ///
     /// # Safety
-    /// Caller must ensure `ns_window` is a valid NSWindow pointer.
+    ///
+    /// This function is unsafe because it dereferences a raw pointer.
+    ///
+    /// Caller must ensure `ns_window` points to a valid, live NSWindow object.
     pub unsafe fn is_ns_window_visible(ns_window: *mut AnyObject) -> bool {
+        // SAFETY: Caller guarantees ns_window is valid
         let window: &NSWindow = unsafe { &*(ns_window as *const NSWindow) };
         window.isVisible()
     }
@@ -265,7 +303,13 @@ fn position_window<R: tauri::Runtime>(window: &WebviewWindow<R>) {
 fn toggle_window(window: &WebviewWindow) {
     #[cfg(target_os = "macos")]
     {
-        let ns_window = window.ns_window().unwrap() as *mut objc2::runtime::AnyObject;
+        let ns_window = match window.ns_window() {
+            Ok(w) => w as *mut objc2::runtime::AnyObject,
+            Err(e) => {
+                error!("Failed to get NSWindow handle: {}", e);
+                return;
+            }
+        };
 
         unsafe {
             if macos::is_ns_window_visible(ns_window) {
@@ -289,7 +333,30 @@ fn toggle_window(window: &WebviewWindow) {
     }
 }
 
+/// Initialize the tracing subscriber for structured logging.
+///
+/// In debug mode, logs at DEBUG level. In release mode, logs at INFO level.
+/// The log level can be overridden via the `RUST_LOG` environment variable.
+fn init_logging() {
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        if cfg!(debug_assertions) {
+            EnvFilter::new("menubar_terminal=debug,warn")
+        } else {
+            EnvFilter::new("menubar_terminal=info,warn")
+        }
+    });
+
+    tracing_subscriber::registry()
+        .with(fmt::layer().with_target(true).with_thread_ids(false))
+        .with(filter)
+        .init();
+}
+
 pub fn run() {
+    // Initialize logging before anything else
+    init_logging();
+    info!("Starting µTerm v{}", env!("CARGO_PKG_VERSION"));
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -309,7 +376,9 @@ pub fn run() {
             pty_commands::close_pty_session,
         ])
         .setup(|app| {
-            let window = app.get_webview_window("main").unwrap();
+            let window = app
+                .get_webview_window("main")
+                .ok_or_else(|| tauri::Error::WindowNotFound)?;
             let window_for_tray = window.clone();
             let window_for_shortcut = window.clone();
 
@@ -317,7 +386,10 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             {
                 // Get the NSWindow handle
-                let ns_window = window.ns_window().unwrap() as *mut objc2::runtime::AnyObject;
+                let ns_window = window
+                    .ns_window()
+                    .map_err(|e| tauri::Error::Anyhow(e.into()))?
+                    as *mut objc2::runtime::AnyObject;
 
                 unsafe {
                     macos::configure_panel_behavior(ns_window);
@@ -331,8 +403,12 @@ pub fn run() {
             // Create system tray
             // IMPORTANT: Use MouseButtonState::Up to trigger on mouse release, not press
             // This matches the behavior of native macOS menubar apps
+            let tray_icon = app
+                .default_window_icon()
+                .ok_or_else(|| tauri::Error::AssetNotFound("default window icon".to_string()))?
+                .clone();
             let _tray = tauri::tray::TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(tray_icon)
                 .tooltip("µTerm")
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
@@ -385,16 +461,17 @@ pub fn run() {
             // Hide window initially
             #[cfg(target_os = "macos")]
             {
-                let ns_window =
-                    window_for_shortcut.ns_window().unwrap() as *mut objc2::runtime::AnyObject;
-                unsafe {
-                    macos::hide_window(ns_window);
+                if let Ok(ns_window) = window_for_shortcut.ns_window() {
+                    let ns_window = ns_window as *mut objc2::runtime::AnyObject;
+                    unsafe {
+                        macos::hide_window(ns_window);
+                    }
                 }
             }
 
             #[cfg(not(target_os = "macos"))]
             {
-                window_for_shortcut.hide().unwrap();
+                let _ = window_for_shortcut.hide();
             }
 
             Ok(())
@@ -408,11 +485,12 @@ pub fn run() {
                     // Show window when Dock icon is clicked
                     #[cfg(target_os = "macos")]
                     {
-                        let ns_window =
-                            window.ns_window().unwrap() as *mut objc2::runtime::AnyObject;
-                        unsafe {
-                            position_window(&window);
-                            macos::show_window(ns_window);
+                        if let Ok(ns_window) = window.ns_window() {
+                            let ns_window = ns_window as *mut objc2::runtime::AnyObject;
+                            unsafe {
+                                position_window(&window);
+                                macos::show_window(ns_window);
+                            }
                         }
                     }
                     #[cfg(not(target_os = "macos"))]
