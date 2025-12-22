@@ -1,8 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
-import { loadSettings, type Settings } from "@/lib/settings";
+import {
+  loadSettings,
+  saveSettings,
+  MIN_WINDOW_WIDTH,
+  MIN_WINDOW_HEIGHT,
+  MAX_WINDOW_WIDTH,
+  MAX_WINDOW_HEIGHT,
+  DEFAULT_SHORTCUT,
+  type Settings,
+} from "@/lib/settings";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import {
+  registerGlobalShortcut,
+  unregisterGlobalShortcut,
+} from "@/lib/tauri";
 
 // Dynamically import XTerminal to avoid SSR issues with xterm.js
 const XTerminal = dynamic(() => import("@/components/XTerminal"), {
@@ -43,47 +57,132 @@ function GearIcon() {
 
 export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [opacity, setOpacity] = useState(0.9);
+  const [opacity, setOpacity] = useState<number | undefined>(undefined);
+  const [fontSize, setFontSize] = useState<number | undefined>(undefined);
+  const settingsRef = useRef<Settings | null>(null);
+  const currentShortcutRef = useRef<string | null>(null);
 
-  // Load settings on mount
+  // Load settings and restore window size on mount
   useEffect(() => {
-    const settings = loadSettings();
-    setOpacity(settings.opacity);
+    const initSettings = async () => {
+      const settings = loadSettings();
+      settingsRef.current = settings;
+      setOpacity(settings.opacity);
+      setFontSize(settings.fontSize);
+
+      // Restore window size from settings
+      if (settings.windowSize) {
+        try {
+          const { getCurrentWindow } = await import("@tauri-apps/api/window");
+          const { LogicalSize } = await import("@tauri-apps/api/dpi");
+          const currentWindow = getCurrentWindow();
+          await currentWindow.setSize(
+            new LogicalSize(settings.windowSize.width, settings.windowSize.height)
+          );
+        } catch (error) {
+          console.error("Failed to restore window size:", error);
+        }
+      }
+
+      // Register global shortcut if enabled
+      if (settings.shortcutEnabled !== false && settings.globalShortcut) {
+        try {
+          await registerGlobalShortcut(settings.globalShortcut, () => {
+            // Callback when shortcut is triggered (window toggle is handled by Rust)
+          });
+          currentShortcutRef.current = settings.globalShortcut;
+        } catch (error) {
+          console.error("Failed to register global shortcut:", error);
+        }
+      }
+    };
+    initSettings();
+
+    // Cleanup on unmount
+    return () => {
+      if (currentShortcutRef.current) {
+        unregisterGlobalShortcut(currentShortcutRef.current).catch(console.error);
+      }
+    };
   }, []);
 
-  const handleSettingsChange = useCallback((settings: Settings) => {
+  const handleSettingsChange = useCallback(async (settings: Settings) => {
+    settingsRef.current = settings;
     setOpacity(settings.opacity);
+    setFontSize(settings.fontSize);
+
+    // Handle shortcut changes
+    const newShortcut = settings.globalShortcut ?? DEFAULT_SHORTCUT;
+    const shortcutEnabled = settings.shortcutEnabled !== false;
+
+    // Unregister old shortcut if it changed or was disabled
+    if (currentShortcutRef.current &&
+        (currentShortcutRef.current !== newShortcut || !shortcutEnabled)) {
+      try {
+        await unregisterGlobalShortcut(currentShortcutRef.current);
+        currentShortcutRef.current = null;
+      } catch (error) {
+        console.error("Failed to unregister shortcut:", error);
+      }
+    }
+
+    // Register new shortcut if enabled and not already registered
+    if (shortcutEnabled && currentShortcutRef.current !== newShortcut) {
+      try {
+        await registerGlobalShortcut(newShortcut, () => {
+          // Callback when shortcut is triggered
+        });
+        currentShortcutRef.current = newShortcut;
+      } catch (error) {
+        console.error("Failed to register shortcut:", error);
+      }
+    }
+  }, []);
+
+  // Handle window resize - save new size to settings
+  const handleResize = useCallback((width: number, height: number) => {
+    const currentSettings = settingsRef.current ?? loadSettings();
+    const newSettings: Settings = {
+      ...currentSettings,
+      windowSize: { width: Math.round(width), height: Math.round(height) },
+    };
+    settingsRef.current = newSettings;
+    saveSettings(newSettings);
   }, []);
 
   return (
-    <main className="main-container">
-      <XTerminal opacity={opacity} />
-      <button
-        className="settings-button"
-        onClick={() => setSettingsOpen(true)}
-        title="Settings"
-      >
-        <GearIcon />
-      </button>
-      <ResizeHandle
-        position="bottom-left"
-        minWidth={400}
-        minHeight={200}
-        maxWidth={1400}
-        maxHeight={900}
-      />
-      <ResizeHandle
-        position="bottom-right"
-        minWidth={400}
-        minHeight={200}
-        maxWidth={1400}
-        maxHeight={900}
-      />
-      <SettingsPanel
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onSettingsChange={handleSettingsChange}
-      />
-    </main>
+    <ErrorBoundary>
+      <main className="main-container">
+        <XTerminal opacity={opacity} fontSize={fontSize} />
+        <button
+          className="settings-button"
+          onClick={() => setSettingsOpen(true)}
+          title="Settings"
+        >
+          <GearIcon />
+        </button>
+        <ResizeHandle
+          position="bottom-left"
+          minWidth={MIN_WINDOW_WIDTH}
+          minHeight={MIN_WINDOW_HEIGHT}
+          maxWidth={MAX_WINDOW_WIDTH}
+          maxHeight={MAX_WINDOW_HEIGHT}
+          onResize={handleResize}
+        />
+        <ResizeHandle
+          position="bottom-right"
+          minWidth={MIN_WINDOW_WIDTH}
+          minHeight={MIN_WINDOW_HEIGHT}
+          maxWidth={MAX_WINDOW_WIDTH}
+          maxHeight={MAX_WINDOW_HEIGHT}
+          onResize={handleResize}
+        />
+        <SettingsPanel
+          isOpen={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          onSettingsChange={handleSettingsChange}
+        />
+      </main>
+    </ErrorBoundary>
   );
 }

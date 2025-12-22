@@ -18,10 +18,11 @@ Built with **Rust**, **Tauri 2.0**, and **Next.js 14**.
 - 🎯 **Menubar Access** - Always one click away from your terminal
 - ⚡ **Lightning Fast** - Native Rust backend with minimal memory footprint
 - 🖥️ **Full PTY Support** - Real terminal emulation with xterm.js
-- 🎨 **Beautiful UI** - One Dark Pro Vivid theme with transparency
+- 🎨 **Beautiful UI** - One Dark Pro Vivid theme with adjustable transparency
+- ⚙️ **Customizable** - Adjust opacity, font size, and window size
 - 📜 **Command History** - Navigate with up/down arrows
 - 🔗 **Clickable Links** - URLs are automatically detected and clickable
-- 🪟 **Smart Window** - Click outside to dismiss, works across all spaces
+- 🪟 **Smart Window** - Click outside to dismiss, resizable, works across all spaces
 
 ## Installation
 
@@ -62,6 +63,13 @@ npm install
 
 # Run in development mode (starts both Next.js and Tauri)
 npm run tauri dev
+
+# Run tests
+npm run test         # Watch mode
+npm run test:run     # Single run
+
+# Lint
+npm run lint
 ```
 
 ## Usage
@@ -69,7 +77,9 @@ npm run tauri dev
 1. **Open** - Click the menubar icon (µ) to open the terminal
 2. **Type** - Enter commands and press Enter to execute
 3. **Navigate** - Use Up/Down arrows to browse command history
-4. **Close** - Click outside the window or click the icon again
+4. **Settings** - Click the gear icon (⚙) to adjust opacity and font size
+5. **Resize** - Drag the bottom-right corner to resize the window
+6. **Close** - Click outside the window or click the icon again
 
 ## Tech Stack
 
@@ -77,9 +87,10 @@ npm run tauri dev
 | ---------- | --------------------- |
 | Backend    | Rust + Tauri 2.0      |
 | Frontend   | Next.js 14 + React 18 |
-| Terminal   | xterm.js              |
+| Terminal   | xterm.js 5.5          |
 | PTY        | portable-pty          |
 | macOS APIs | objc2 + objc2-app-kit |
+| Testing    | Vitest                |
 
 ## Project Structure
 
@@ -88,8 +99,11 @@ menubar-terminal/
 ├── src/                    # Next.js frontend
 │   ├── app/               # App Router pages
 │   ├── components/        # React components
-│   │   └── XTerminal.tsx  # Terminal UI
-│   ├── lib/               # Utilities
+│   │   ├── XTerminal.tsx  # Terminal UI with xterm.js
+│   │   ├── SettingsPanel.tsx  # Settings overlay
+│   │   ├── ResizeHandle.tsx   # Window resize control
+│   │   └── ErrorBoundary.tsx  # Error handling
+│   ├── lib/               # Utilities & settings
 │   └── styles/            # CSS styles
 ├── src-tauri/             # Rust backend
 │   ├── src/

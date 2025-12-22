@@ -1,11 +1,38 @@
 use parking_lot::Mutex;
-use portable_pty::{native_pty_system, CommandBuilder, PtyPair, PtySize};
+use portable_pty::{native_pty_system, Child, CommandBuilder, PtyPair, PtySize};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::thread;
+use std::thread::{self, JoinHandle};
 use tauri::{AppHandle, Emitter};
+
+/// Minimum allowed PTY columns
+const MIN_PTY_COLS: u16 = 20;
+/// Minimum allowed PTY rows
+const MIN_PTY_ROWS: u16 = 5;
+/// Maximum allowed PTY columns
+const MAX_PTY_COLS: u16 = 500;
+/// Maximum allowed PTY rows
+const MAX_PTY_ROWS: u16 = 200;
+
+/// Validate PTY dimensions
+fn validate_pty_size(cols: u16, rows: u16) -> Result<(), String> {
+    if !(MIN_PTY_COLS..=MAX_PTY_COLS).contains(&cols) {
+        return Err(format!(
+            "Invalid cols: {}. Must be between {} and {}",
+            cols, MIN_PTY_COLS, MAX_PTY_COLS
+        ));
+    }
+    if !(MIN_PTY_ROWS..=MAX_PTY_ROWS).contains(&rows) {
+        return Err(format!(
+            "Invalid rows: {}. Must be between {} and {}",
+            rows, MIN_PTY_ROWS, MAX_PTY_ROWS
+        ));
+    }
+    Ok(())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PtyOutput {
@@ -20,8 +47,12 @@ pub struct PtyExit {
 }
 
 struct PtySession {
+    #[allow(dead_code)]
     pair: PtyPair,
     writer: Box<dyn Write + Send>,
+    child: Box<dyn Child + Send + Sync>,
+    reader_thread: Option<JoinHandle<()>>,
+    shutdown_flag: Arc<AtomicBool>,
 }
 
 pub struct PtyManager {
@@ -41,6 +72,9 @@ impl PtyManager {
         cols: u16,
         rows: u16,
     ) -> Result<String, String> {
+        // Validate PTY dimensions before creating session
+        validate_pty_size(cols, rows)?;
+
         let session_id = uuid::Uuid::new_v4().to_string();
 
         let pty_system = native_pty_system();
@@ -55,16 +89,36 @@ impl PtyManager {
 
         // Get the user's default shell
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
 
         let mut cmd = CommandBuilder::new(&shell);
-        cmd.cwd(std::env::var("HOME").unwrap_or_else(|_| "/".to_string()));
+        cmd.cwd(&home);
 
         // Set up environment variables for proper terminal behavior
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
 
+        // Inherit important environment variables for shell compatibility
+        cmd.env("HOME", &home);
+        cmd.env("SHELL", &shell);
+        if let Ok(user) = std::env::var("USER") {
+            cmd.env("USER", user);
+        }
+        if let Ok(lang) = std::env::var("LANG") {
+            cmd.env("LANG", lang);
+        } else {
+            cmd.env("LANG", "en_US.UTF-8");
+        }
+        if let Ok(path) = std::env::var("PATH") {
+            cmd.env("PATH", path);
+        }
+        // LC_ALL for proper locale handling
+        if let Ok(lc_all) = std::env::var("LC_ALL") {
+            cmd.env("LC_ALL", lc_all);
+        }
+
         // Spawn the shell process
-        let mut child = pair
+        let child = pair
             .slave
             .spawn_command(cmd)
             .map_err(|e| format!("Failed to spawn shell: {}", e))?;
@@ -81,13 +135,24 @@ impl PtyManager {
             .try_clone_reader()
             .map_err(|e| format!("Failed to get PTY reader: {}", e))?;
 
-        let session = PtySession { pair, writer };
+        // Create shutdown flag for clean thread termination
+        let shutdown_flag = Arc::new(AtomicBool::new(false));
+        let shutdown_flag_clone = shutdown_flag.clone();
+
+        let session = PtySession {
+            pair,
+            writer,
+            child,
+            reader_thread: None,
+            shutdown_flag,
+        };
         let session_arc = Arc::new(Mutex::new(session));
+        let session_arc_for_thread = session_arc.clone();
 
         // Store the session
         {
             let mut sessions = self.sessions.lock();
-            sessions.insert(session_id.clone(), session_arc);
+            sessions.insert(session_id.clone(), session_arc.clone());
         }
 
         // Spawn a thread to read output from PTY and emit events
@@ -95,9 +160,14 @@ impl PtyManager {
         let app_clone = app.clone();
         let sessions_clone = self.sessions.clone();
 
-        thread::spawn(move || {
+        let reader_thread = thread::spawn(move || {
             let mut buffer = [0u8; 4096];
             loop {
+                // Check if shutdown was requested
+                if shutdown_flag_clone.load(Ordering::SeqCst) {
+                    break;
+                }
+
                 match reader.read(&mut buffer) {
                     Ok(0) => {
                         // EOF - PTY closed
@@ -114,21 +184,29 @@ impl PtyManager {
                         );
                     }
                     Err(e) => {
-                        eprintln!("PTY read error: {}", e);
+                        // Don't log error if shutdown was requested
+                        if !shutdown_flag_clone.load(Ordering::SeqCst) {
+                            eprintln!("PTY read error: {}", e);
+                        }
                         break;
                     }
                 }
             }
 
-            // Wait for the child process to exit
-            let exit_code = child.wait().ok().map(|status| {
-                if status.success() {
-                    0
-                } else {
-                    // portable-pty ExitStatus doesn't expose exit code directly
-                    1
-                }
-            });
+            // Wait for the child process to exit (only if not shutdown)
+            let exit_code = if !shutdown_flag_clone.load(Ordering::SeqCst) {
+                let mut session_guard = session_arc_for_thread.lock();
+                session_guard.child.wait().ok().map(|status| {
+                    if status.success() {
+                        0
+                    } else {
+                        // portable-pty ExitStatus doesn't expose exit code directly
+                        1
+                    }
+                })
+            } else {
+                None
+            };
 
             // Emit exit event
             let _ = app_clone.emit(
@@ -143,6 +221,12 @@ impl PtyManager {
             let mut sessions = sessions_clone.lock();
             sessions.remove(&session_id_clone);
         });
+
+        // Store the thread handle
+        {
+            let mut session_guard = session_arc.lock();
+            session_guard.reader_thread = Some(reader_thread);
+        }
 
         Ok(session_id)
     }
@@ -167,6 +251,9 @@ impl PtyManager {
     }
 
     pub fn resize_session(&self, session_id: &str, cols: u16, rows: u16) -> Result<(), String> {
+        // Validate PTY dimensions before resizing
+        validate_pty_size(cols, rows)?;
+
         let sessions = self.sessions.lock();
         let session = sessions
             .get(session_id)
@@ -188,8 +275,35 @@ impl PtyManager {
     }
 
     pub fn close_session(&self, session_id: &str) -> Result<(), String> {
-        let mut sessions = self.sessions.lock();
-        sessions.remove(session_id);
+        let session = {
+            let mut sessions = self.sessions.lock();
+            sessions.remove(session_id)
+        };
+
+        if let Some(session_arc) = session {
+            // Signal the reader thread to stop
+            let (reader_thread, child_to_kill) = {
+                let mut session_guard = session_arc.lock();
+                session_guard.shutdown_flag.store(true, Ordering::SeqCst);
+
+                // Take ownership of thread handle and prepare to kill child
+                (session_guard.reader_thread.take(), true)
+            };
+
+            // Kill the child process to unblock the reader thread
+            if child_to_kill {
+                let mut session_guard = session_arc.lock();
+                // Try to kill the child process - this will cause reader to get EOF
+                let _ = session_guard.child.kill();
+            }
+
+            // Wait for the reader thread to finish (with timeout behavior)
+            if let Some(handle) = reader_thread {
+                // Join the thread - it should exit quickly after child is killed
+                let _ = handle.join();
+            }
+        }
+
         Ok(())
     }
 }

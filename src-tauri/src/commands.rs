@@ -12,12 +12,104 @@ use tokio::process::Command as TokioCommand;
 /// Buffer size for reading command output streams
 const STREAM_BUFFER_SIZE: usize = 1024;
 
+/// Maximum length for command strings to prevent DoS
+const MAX_COMMAND_LENGTH: usize = 4096;
+
+/// Maximum length for individual arguments
+const MAX_ARG_LENGTH: usize = 4096;
+
+/// Maximum number of arguments allowed
+const MAX_ARGS_COUNT: usize = 100;
+
 /// Common shell built-in commands for tab completion
 const BUILTIN_COMMANDS: &[&str] = &[
     "alias", "cat", "cd", "clear", "cp", "echo", "exit", "export", "find",
     "grep", "help", "history", "ls", "mkdir", "mv", "pwd", "quit", "rm",
     "type", "unalias", "unset", "where", "which",
 ];
+
+/// Characters that are not allowed in command names for security
+/// These could be used for shell injection if passed to a shell
+const FORBIDDEN_COMMAND_CHARS: &[char] = &[
+    ';', '&', '|', '$', '`', '(', ')', '{', '}', '[', ']',
+    '<', '>', '\n', '\r', '\0', '\'', '"', '\\',
+];
+
+/// Validate a command string for security
+fn validate_command(cmd: &str) -> Result<(), String> {
+    // Check for empty command
+    if cmd.is_empty() {
+        return Err("Command cannot be empty".to_string());
+    }
+
+    // Check command length
+    if cmd.len() > MAX_COMMAND_LENGTH {
+        return Err(format!(
+            "Command too long: {} chars (max {})",
+            cmd.len(),
+            MAX_COMMAND_LENGTH
+        ));
+    }
+
+    // Check for forbidden characters that could enable shell injection
+    for c in FORBIDDEN_COMMAND_CHARS {
+        if cmd.contains(*c) {
+            let char_display = match *c {
+                '\n' => "\\n".to_string(),
+                '\r' => "\\r".to_string(),
+                '\0' => "\\0".to_string(),
+                other => other.to_string(),
+            };
+            return Err(format!(
+                "Command contains forbidden character '{}'. Use proper arguments instead of shell syntax.",
+                char_display
+            ));
+        }
+    }
+
+    // Check that command doesn't start with a dash (option injection)
+    if cmd.starts_with('-') {
+        return Err("Command cannot start with '-'".to_string());
+    }
+
+    // Check for path traversal attempts in command name
+    if cmd.contains("..") {
+        return Err("Command cannot contain '..' path traversal".to_string());
+    }
+
+    Ok(())
+}
+
+/// Validate arguments for security
+fn validate_args(args: &[String]) -> Result<(), String> {
+    // Check argument count
+    if args.len() > MAX_ARGS_COUNT {
+        return Err(format!(
+            "Too many arguments: {} (max {})",
+            args.len(),
+            MAX_ARGS_COUNT
+        ));
+    }
+
+    // Validate each argument
+    for (i, arg) in args.iter().enumerate() {
+        if arg.len() > MAX_ARG_LENGTH {
+            return Err(format!(
+                "Argument {} too long: {} chars (max {})",
+                i,
+                arg.len(),
+                MAX_ARG_LENGTH
+            ));
+        }
+
+        // Check for null bytes which could cause truncation
+        if arg.contains('\0') {
+            return Err(format!("Argument {} contains null byte", i));
+        }
+    }
+
+    Ok(())
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CommandResult {
@@ -36,10 +128,9 @@ pub struct StreamChunk {
 pub async fn execute_command(cmd: String, args: Vec<String>) -> Result<CommandResult, String> {
     use std::process::Command;
 
-    // Validate command is not empty
-    if cmd.is_empty() {
-        return Err("Command cannot be empty".to_string());
-    }
+    // Validate command and arguments for security
+    validate_command(&cmd)?;
+    validate_args(&args)?;
 
     // Execute command with proper error handling
     let output = Command::new(&cmd)
@@ -71,10 +162,9 @@ pub async fn execute_command_stream(
     cmd: String,
     args: Vec<String>,
 ) -> Result<i32, String> {
-    // Validate command is not empty
-    if cmd.is_empty() {
-        return Err("Command cannot be empty".to_string());
-    }
+    // Validate command and arguments for security
+    validate_command(&cmd)?;
+    validate_args(&args)?;
 
     let mut child = TokioCommand::new(&cmd)
         .args(&args)
@@ -99,7 +189,7 @@ pub async fn execute_command_stream(
     let app_stdout = app.clone();
     let app_stderr = app.clone();
 
-    // Handle stdout - read in chunks for real-time streaming
+    // Handle stdout - read in chunks for real-time streaming with error logging
     tokio::spawn(async move {
         let mut reader = TokioBufReader::new(stdout);
         let mut buffer = vec![0u8; STREAM_BUFFER_SIZE];
@@ -109,20 +199,26 @@ pub async fn execute_command_stream(
                 Ok(0) => break, // EOF
                 Ok(n) => {
                     let chunk = String::from_utf8_lossy(&buffer[..n]).to_string();
-                    let _ = app_stdout.emit(
+                    if let Err(e) = app_stdout.emit(
                         "command-stdout",
                         StreamChunk {
                             chunk,
                             is_stderr: false,
                         },
-                    );
+                    ) {
+                        eprintln!("Failed to emit stdout event: {}", e);
+                        break;
+                    }
                 }
-                Err(_) => break,
+                Err(e) => {
+                    eprintln!("Error reading stdout: {}", e);
+                    break;
+                }
             }
         }
     });
 
-    // Handle stderr - read in chunks for real-time streaming
+    // Handle stderr - read in chunks for real-time streaming with error logging
     tokio::spawn(async move {
         let mut reader = TokioBufReader::new(stderr);
         let mut buffer = vec![0u8; STREAM_BUFFER_SIZE];
@@ -132,15 +228,21 @@ pub async fn execute_command_stream(
                 Ok(0) => break, // EOF
                 Ok(n) => {
                     let chunk = String::from_utf8_lossy(&buffer[..n]).to_string();
-                    let _ = app_stderr.emit(
+                    if let Err(e) = app_stderr.emit(
                         "command-stderr",
                         StreamChunk {
                             chunk,
                             is_stderr: true,
                         },
-                    );
+                    ) {
+                        eprintln!("Failed to emit stderr event: {}", e);
+                        break;
+                    }
                 }
-                Err(_) => break,
+                Err(e) => {
+                    eprintln!("Error reading stderr: {}", e);
+                    break;
+                }
             }
         }
     });

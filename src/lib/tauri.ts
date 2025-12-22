@@ -139,3 +139,65 @@ export async function closePtySession(sessionId: string): Promise<void> {
   const invoke = await getInvoke();
   await invoke("close_pty_session", { sessionId });
 }
+
+// Global shortcut functions
+async function getEmit() {
+  if (!isTauri()) {
+    throw new Error("Not running in Tauri environment");
+  }
+  const { emit } = await import("@tauri-apps/api/event");
+  return emit;
+}
+
+export async function registerGlobalShortcut(
+  shortcut: string,
+  onTrigger: () => void
+): Promise<() => Promise<void>> {
+  if (!isTauri()) {
+    console.warn("Global shortcuts only work in Tauri environment");
+    return async () => {};
+  }
+
+  const { register, unregister } = await import("@tauri-apps/plugin-global-shortcut");
+  const emit = await getEmit();
+
+  await register(shortcut, async (event) => {
+    if (event.state === "Pressed") {
+      // Emit event to Rust backend to toggle window
+      await emit("toggle-window", {});
+      onTrigger();
+    }
+  });
+
+  // Return unregister function
+  return async () => {
+    await unregister(shortcut);
+  };
+}
+
+export async function unregisterGlobalShortcut(shortcut: string): Promise<void> {
+  if (!isTauri()) {
+    return;
+  }
+
+  const { unregister } = await import("@tauri-apps/plugin-global-shortcut");
+  await unregister(shortcut);
+}
+
+export async function unregisterAllShortcuts(): Promise<void> {
+  if (!isTauri()) {
+    return;
+  }
+
+  const { unregisterAll } = await import("@tauri-apps/plugin-global-shortcut");
+  await unregisterAll();
+}
+
+export async function isShortcutRegistered(shortcut: string): Promise<boolean> {
+  if (!isTauri()) {
+    return false;
+  }
+
+  const { isRegistered } = await import("@tauri-apps/plugin-global-shortcut");
+  return isRegistered(shortcut);
+}

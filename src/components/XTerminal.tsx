@@ -12,6 +12,12 @@ import { loadSettings } from "@/lib/settings";
 const PTY_RESTART_DELAY_MS = 1000;
 /** Delay before focusing terminal after window focus - allows window to fully render (ms) */
 const WINDOW_FOCUS_DELAY_MS = 50;
+/** Maximum retry attempts for PTY session creation */
+const MAX_PTY_RETRIES = 3;
+/** Delay between PTY retry attempts (ms) */
+const PTY_RETRY_DELAY_MS = 500;
+/** Delay before focusing terminal after window becomes visible (ms) */
+const WINDOW_VISIBLE_FOCUS_DELAY_MS = 100;
 
 // Key codes
 const ESC_KEY = "\x1b";
@@ -53,15 +59,17 @@ interface PtyExit {
 
 interface XTerminalProps {
   opacity?: number;
+  fontSize?: number;
 }
 
-export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
+export default function XTerminal({ opacity: propOpacity, fontSize: propFontSize }: XTerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const unlistenOutputRef = useRef<(() => void) | null>(null);
   const unlistenExitRef = useRef<(() => void) | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const initializedRef = useRef(false);
 
   // Update terminal background when opacity changes
@@ -74,6 +82,15 @@ export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
     }
   }, [propOpacity]);
 
+  // Update terminal font size when prop changes
+  useEffect(() => {
+    if (xtermRef.current && propFontSize !== undefined) {
+      xtermRef.current.options.fontSize = propFontSize;
+      // Refit terminal to adjust for new font size
+      fitAddonRef.current?.fit();
+    }
+  }, [propFontSize]);
+
   const initTerminal = useCallback(async () => {
     if (!terminalRef.current || initializedRef.current) return;
     initializedRef.current = true;
@@ -82,15 +99,16 @@ export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
     const { invoke } = await import("@tauri-apps/api/core");
     const { listen } = await import("@tauri-apps/api/event");
 
-    // Load saved settings for initial opacity
+    // Load saved settings for initial opacity and font size
     const settings = loadSettings();
     const initialOpacity = propOpacity ?? settings.opacity;
+    const initialFontSize = propFontSize ?? settings.fontSize ?? 13;
 
     // Create terminal instance with One Dark Pro Vivid theme
     const terminal = new Terminal({
       cursorBlink: true,
       cursorStyle: "block",
-      fontSize: 13,
+      fontSize: initialFontSize,
       fontFamily: '"SF Mono", Menlo, Monaco, "Courier New", monospace',
       lineHeight: 1.2,
       letterSpacing: 0,
@@ -139,8 +157,8 @@ export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
     });
     unlistenExitRef.current = unlistenExit;
 
-    // Create PTY session
-    const createSession = async (c: number, r: number) => {
+    // Create PTY session with retry logic
+    const createSession = async (c: number, r: number, retryCount = 0): Promise<void> => {
       try {
         const sessionId = await invoke<string>("create_pty_session", {
           cols: c,
@@ -148,7 +166,19 @@ export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
         });
         sessionIdRef.current = sessionId;
       } catch (error) {
+        console.error("[PTY] Failed to create session:", error);
         terminal.write(`\x1b[31mFailed to create PTY session: ${error}\x1b[0m\r\n`);
+
+        // Retry logic
+        if (retryCount < MAX_PTY_RETRIES) {
+          const nextRetry = retryCount + 1;
+          terminal.write(`\x1b[33mRetrying... (${nextRetry}/${MAX_PTY_RETRIES})\x1b[0m\r\n`);
+          await new Promise((resolve) => setTimeout(resolve, PTY_RETRY_DELAY_MS * nextRetry));
+          return createSession(c, r, nextRetry);
+        } else {
+          terminal.write(`\x1b[31mFailed to create terminal after ${MAX_PTY_RETRIES} attempts.\x1b[0m\r\n`);
+          terminal.write(`\x1b[33mPlease restart the application.\x1b[0m\r\n`);
+        }
       }
     };
 
@@ -156,12 +186,12 @@ export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
 
     // Handle user input
     terminal.onData(async (data) => {
-      // Intercept ESC key to hide window instead of sending to PTY
+      // Single ESC to hide window
       if (data === ESC_KEY) {
         try {
           await invoke("hide_window");
         } catch (error) {
-          console.error("Failed to hide window:", error);
+          console.error("[Window] Failed to hide window:", error);
         }
         return;
       }
@@ -173,7 +203,24 @@ export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
             data,
           });
         } catch (error) {
-          console.error("Failed to write to PTY:", error);
+          console.error("[PTY] Write failed:", error);
+          terminal.write("\r\n\x1b[31m[Connection lost. Attempting to reconnect...]\x1b[0m\r\n");
+
+          // Trigger reconnection
+          const currentSession = sessionIdRef.current;
+          sessionIdRef.current = null;
+
+          // Try to close the old session gracefully
+          if (currentSession) {
+            try {
+              await invoke("close_pty_session", { sessionId: currentSession });
+            } catch {
+              // Ignore close errors during reconnection
+            }
+          }
+
+          // Create new session
+          await createSession(terminal.cols, terminal.rows);
         }
       }
     });
@@ -188,7 +235,9 @@ export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
             sessionId: sessionIdRef.current,
             cols,
             rows,
-          }).catch(console.error);
+          }).catch((error) => {
+            console.error("[PTY] Resize failed:", error);
+          });
         }
       }
     };
@@ -199,34 +248,51 @@ export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
           sessionId: sessionIdRef.current,
           cols,
           rows,
-        }).catch(console.error);
+        }).catch((error) => {
+          console.error("[PTY] Resize failed:", error);
+        });
       }
     });
 
     // Setup resize observer
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(terminalRef.current);
+    resizeObserverRef.current = resizeObserver;
 
     // Focus terminal
     terminal.focus();
 
     // Cleanup function
     return () => {
-      resizeObserver.disconnect();
-      if (unlistenOutputRef.current) unlistenOutputRef.current();
-      if (unlistenExitRef.current) unlistenExitRef.current();
+      // Disconnect resize observer
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
+      // Clean up event listeners
+      if (unlistenOutputRef.current) {
+        unlistenOutputRef.current();
+        unlistenOutputRef.current = null;
+      }
+      if (unlistenExitRef.current) {
+        unlistenExitRef.current();
+        unlistenExitRef.current = null;
+      }
+      // Close PTY session
       if (sessionIdRef.current) {
         invoke("close_pty_session", { sessionId: sessionIdRef.current }).catch(
           console.error
         );
         sessionIdRef.current = null;
       }
+      // Dispose terminal
       terminal.dispose();
       xtermRef.current = null;
       fitAddonRef.current = null;
       initializedRef.current = false;
     };
-  }, [propOpacity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -276,6 +342,32 @@ export default function XTerminal({ opacity: propOpacity }: XTerminalProps) {
 
     return () => {
       if (unlistenFocus) unlistenFocus();
+    };
+  }, []);
+
+  // Listen for toggle-window event to auto-focus terminal when shown via global shortcut
+  useEffect(() => {
+    let unlistenToggle: (() => void) | undefined;
+
+    const setupToggleListener = async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+
+        unlistenToggle = await listen("toggle-window", () => {
+          // Delay to ensure window is visible before focusing
+          setTimeout(() => {
+            xtermRef.current?.focus();
+          }, WINDOW_VISIBLE_FOCUS_DELAY_MS);
+        });
+      } catch (error) {
+        console.error("Failed to setup toggle-window listener:", error);
+      }
+    };
+
+    setupToggleListener();
+
+    return () => {
+      if (unlistenToggle) unlistenToggle();
     };
   }, []);
 
