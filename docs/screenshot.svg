@@ -1,0 +1,203 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" fill="none">
+  <defs>
+    <!-- macOS Desktop Gradient Background -->
+    <linearGradient id="desktopBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f3460"/>
+    </linearGradient>
+
+    <!-- Terminal Background with transparency -->
+    <linearGradient id="terminalBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(40,44,52,0.95)"/>
+      <stop offset="100%" style="stop-color:rgba(33,37,43,0.95)"/>
+    </linearGradient>
+
+    <!-- Glow effect -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Shadow for window -->
+    <filter id="windowShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+
+    <!-- Menubar Icon glow -->
+    <filter id="iconGlow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- macOS Desktop Background -->
+  <rect width="900" height="700" fill="url(#desktopBg)"/>
+
+  <!-- Subtle grid pattern -->
+  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.02)" stroke-width="1"/>
+  </pattern>
+  <rect width="900" height="700" fill="url(#grid)"/>
+
+  <!-- macOS Menubar -->
+  <rect x="0" y="0" width="900" height="28" fill="rgba(30,30,30,0.85)"/>
+  <rect x="0" y="27" width="900" height="1" fill="rgba(255,255,255,0.1)"/>
+
+  <!-- Apple Logo -->
+  <text x="16" y="19" font-family="SF Pro, -apple-system, system-ui" font-size="14" fill="#fff" opacity="0.9"></text>
+
+  <!-- App Name -->
+  <text x="36" y="19" font-family="SF Pro, -apple-system, system-ui" font-size="13" font-weight="600" fill="#fff" opacity="0.9">µTerm</text>
+
+  <!-- Menu Items -->
+  <text x="90" y="19" font-family="SF Pro, -apple-system, system-ui" font-size="13" fill="#fff" opacity="0.7">File</text>
+  <text x="125" y="19" font-family="SF Pro, -apple-system, system-ui" font-size="13" fill="#fff" opacity="0.7">Edit</text>
+  <text x="160" y="19" font-family="SF Pro, -apple-system, system-ui" font-size="13" fill="#fff" opacity="0.7">View</text>
+
+  <!-- Right side menubar items -->
+  <!-- Battery -->
+  <rect x="740" y="9" width="22" height="10" rx="2" fill="none" stroke="#fff" stroke-width="1" opacity="0.7"/>
+  <rect x="762" y="12" width="2" height="4" rx="1" fill="#fff" opacity="0.7"/>
+  <rect x="742" y="11" width="16" height="6" rx="1" fill="#89ca78"/>
+
+  <!-- WiFi -->
+  <path d="M780 17 Q787 10 794 17" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.7"/>
+  <path d="M783 15 Q787 12 791 15" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.7"/>
+  <circle cx="787" cy="17" r="1.5" fill="#fff" opacity="0.7"/>
+
+  <!-- Time -->
+  <text x="810" y="19" font-family="SF Pro, -apple-system, system-ui" font-size="13" fill="#fff" opacity="0.9">9:41 AM</text>
+
+  <!-- µTerm Tray Icon (highlighted) -->
+  <g transform="translate(700, 5)">
+    <rect x="0" y="0" width="28" height="18" rx="4" fill="rgba(97,175,239,0.2)"/>
+    <text x="14" y="14" font-family="SF Mono, Monaco" font-size="11" fill="#61afef" text-anchor="middle" font-weight="600" filter="url(#iconGlow)">µ</text>
+  </g>
+
+  <!-- Terminal Window -->
+  <g transform="translate(100, 45)" filter="url(#windowShadow)">
+    <!-- Window Background with rounded corners -->
+    <rect width="700" height="550" rx="10" fill="rgba(40,44,52,0.95)"/>
+
+    <!-- Window border glow -->
+    <rect width="700" height="550" rx="10" fill="none" stroke="rgba(97,175,239,0.3)" stroke-width="1"/>
+
+    <!-- Terminal Content -->
+    <g transform="translate(16, 16)">
+      <!-- Prompt Line 1 -->
+      <text y="0" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">~/Projects/microterm</text>
+      <text y="0" x="175" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">on</text>
+      <text y="0" x="195" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#d55fde"> main</text>
+      <text y="0" x="245" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">[!]</text>
+
+      <!-- Command 1 -->
+      <text y="20" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#61afef">❯</text>
+      <text y="20" x="18" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">git status</text>
+
+      <!-- Git output -->
+      <text y="45" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">On branch </text>
+      <text y="45" x="85" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">main</text>
+      <text y="65" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Your branch is up to date with </text>
+      <text y="65" x="240" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#e5c07b">'origin/main'</text>
+
+      <text y="95" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Changes not staged for commit:</text>
+      <text y="115" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">  (use "git add &lt;file&gt;..." to update what will be committed)</text>
+
+      <text y="145" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#ef596f">        modified:</text>
+      <text y="145" x="105" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#ef596f">src/components/Terminal.tsx</text>
+      <text y="165" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#ef596f">        modified:</text>
+      <text y="165" x="105" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#ef596f">src-tauri/src/lib.rs</text>
+
+      <!-- Prompt Line 2 -->
+      <text y="205" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">~/Projects/microterm</text>
+      <text y="205" x="175" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">on</text>
+      <text y="205" x="195" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#d55fde"> main</text>
+      <text y="205" x="245" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#e5c07b">[!]</text>
+
+      <!-- Command 2 -->
+      <text y="225" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#61afef">❯</text>
+      <text y="225" x="18" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">npm run build</text>
+
+      <!-- Build output -->
+      <text y="255" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">> menubar-terminal@1.0.0 build</text>
+      <text y="275" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">> next build</text>
+
+      <text y="305" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">   ▲ Next.js 14.2.0</text>
+      <text y="325" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">   - Environments: .env</text>
+
+      <text y="355" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">   ✓</text>
+      <text y="355" x="32" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Creating an optimized production build</text>
+      <text y="375" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">   ✓</text>
+      <text y="375" x="32" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Compiled successfully</text>
+      <text y="395" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">   ✓</text>
+      <text y="395" x="32" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Linting and checking validity of types</text>
+      <text y="415" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">   ✓</text>
+      <text y="415" x="32" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Collecting page data</text>
+      <text y="435" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">   ✓</text>
+      <text y="435" x="32" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Generating static pages (3/3)</text>
+      <text y="455" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">   ✓</text>
+      <text y="455" x="32" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Finalizing page optimization</text>
+
+      <!-- Current prompt with cursor -->
+      <text y="495" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">~/Projects/microterm</text>
+      <text y="495" x="175" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">on</text>
+      <text y="495" x="195" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#d55fde"> main</text>
+
+      <text y="515" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#61afef">❯</text>
+      <!-- Blinking cursor -->
+      <rect x="18" y="503" width="8" height="15" fill="#528bff" opacity="0.9">
+        <animate attributeName="opacity" values="0.9;0;0.9" dur="1s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+
+    <!-- Settings gear icon (top right) -->
+    <g transform="translate(660, 14)" opacity="0.3">
+      <circle cx="9" cy="9" r="8" fill="none" stroke="#fff" stroke-width="1.5"/>
+      <circle cx="9" cy="9" r="3" fill="none" stroke="#fff" stroke-width="1.5"/>
+      <line x1="9" y1="0" x2="9" y2="3" stroke="#fff" stroke-width="1.5"/>
+      <line x1="9" y1="15" x2="9" y2="18" stroke="#fff" stroke-width="1.5"/>
+      <line x1="0" y1="9" x2="3" y2="9" stroke="#fff" stroke-width="1.5"/>
+      <line x1="15" y1="9" x2="18" y2="9" stroke="#fff" stroke-width="1.5"/>
+    </g>
+  </g>
+
+  <!-- Keyboard shortcut hint -->
+  <g transform="translate(450, 625)">
+    <rect x="-120" y="-18" width="240" height="36" rx="8" fill="rgba(40,44,52,0.9)" stroke="rgba(97,175,239,0.3)" stroke-width="1"/>
+    <text y="5" text-anchor="middle" font-family="SF Pro, -apple-system" font-size="12" fill="#5c6370">Press</text>
+    <text y="5" x="35" text-anchor="middle" font-family="SF Mono, Monaco" font-size="11" fill="#61afef">⌘</text>
+    <text y="5" x="50" text-anchor="middle" font-family="SF Pro, -apple-system" font-size="12" fill="#5c6370">+</text>
+    <text y="5" x="65" text-anchor="middle" font-family="SF Mono, Monaco" font-size="11" fill="#61afef">⇧</text>
+    <text y="5" x="80" text-anchor="middle" font-family="SF Pro, -apple-system" font-size="12" fill="#5c6370">+</text>
+    <text y="5" x="95" text-anchor="middle" font-family="SF Mono, Monaco" font-size="11" fill="#61afef">T</text>
+    <text y="5" x="130" text-anchor="middle" font-family="SF Pro, -apple-system" font-size="12" fill="#5c6370">to toggle</text>
+  </g>
+
+  <!-- Feature badges -->
+  <g transform="translate(450, 670)">
+    <!-- Lightweight badge -->
+    <g transform="translate(-180, 0)">
+      <rect x="-50" y="-12" width="100" height="24" rx="12" fill="rgba(137,202,120,0.15)" stroke="#89ca78" stroke-width="1"/>
+      <text y="4" text-anchor="middle" font-family="SF Pro, -apple-system" font-size="11" fill="#89ca78">⚡ Lightweight</text>
+    </g>
+
+    <!-- Native badge -->
+    <g transform="translate(0, 0)">
+      <rect x="-50" y="-12" width="100" height="24" rx="12" fill="rgba(97,175,239,0.15)" stroke="#61afef" stroke-width="1"/>
+      <text y="4" text-anchor="middle" font-family="SF Pro, -apple-system" font-size="11" fill="#61afef">🍎 Native macOS</text>
+    </g>
+
+    <!-- Fast badge -->
+    <g transform="translate(180, 0)">
+      <rect x="-50" y="-12" width="100" height="24" rx="12" fill="rgba(213,95,222,0.15)" stroke="#d55fde" stroke-width="1"/>
+      <text y="4" text-anchor="middle" font-family="SF Pro, -apple-system" font-size="11" fill="#d55fde">🚀 Rust Powered</text>
+    </g>
+  </g>
+</svg>

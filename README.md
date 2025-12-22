@@ -12,7 +12,7 @@ A micro terminal that lives in your macOS menubar. Lightweight, fast, always one
 Built with **Rust**, **Tauri 2.0**, and **Next.js 14**.
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="µTerm Screenshot" width="600">
+  <img src="docs/screenshot.png" alt="µTerm Screenshot" width="800">
 </p>
 
 ## Features
