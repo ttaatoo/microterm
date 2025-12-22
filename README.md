@@ -1,6 +1,6 @@
 # µTerm (MicroTerm)
 
-[![CI](https://github.com/ttaatoo/menubar-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/ttaatoo/menubar-terminal/actions/workflows/ci.yml)
+[![CI](https://github.com/ttaatoo/microterm/actions/workflows/ci.yml/badge.svg)](https://github.com/ttaatoo/microterm/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-blue?logo=tauri)](https://tauri.app)
 [![Platform](https://img.shields.io/badge/platform-macOS_only-lightgrey?logo=apple)](https://www.apple.com/macos/)
@@ -30,7 +30,7 @@ Built with **Rust**, **Tauri 2.0**, and **Next.js 14**.
 
 ### Download
 
-Download the latest release from the [Releases](https://github.com/ttaatoo/menubar-terminal/releases) page.
+Download the latest release from the [Releases](https://github.com/ttaatoo/microterm/releases) page.
 
 ### Build from Source
 
@@ -44,8 +44,8 @@ Download the latest release from the [Releases](https://github.com/ttaatoo/menub
 
 ```bash
 # Clone the repository
-git clone https://github.com/ttaatoo/menubar-terminal.git
-cd menubar-terminal
+git clone https://github.com/ttaatoo/microterm.git
+cd microterm
 
 # Install dependencies
 npm install
