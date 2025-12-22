@@ -18,9 +18,12 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: transparent;
+  background: rgba(40, 44, 52, 0.95);
   overflow: hidden;
   position: relative;
+  border-radius: 10px;
+  border: 1px solid rgba(97, 175, 239, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 /* Animation for dropdown */
@@ -48,16 +51,16 @@ body {
 }
 
 /* Apply padding via xterm's internal structure */
-/* Right padding accounts for settings button (12px + 22px + 8px gap = 42px) */
+/* Right padding accounts for settings button (16px + 22px + 8px gap = 46px) */
 .xterminal-container .xterm {
-  padding: 10px 42px 10px 12px;
+  padding: 16px 46px 16px 16px;
 }
 
 /* Settings button */
 .settings-button {
   position: absolute;
-  top: 10px;
-  right: 12px;
+  top: 14px;
+  right: 16px;
   width: 22px;
   height: 22px;
   display: flex;
@@ -97,20 +100,21 @@ body {
 /* Hide default scrollbar, only show xterm's */
 .xterminal-container .xterm-viewport::-webkit-scrollbar {
   width: 8px;
-  background: #282c34;
+  background: transparent;
 }
 
 .xterminal-container .xterm-viewport::-webkit-scrollbar-track {
-  background: #282c34;
+  background: transparent;
+  margin: 10px 0;
 }
 
 .xterminal-container .xterm-viewport::-webkit-scrollbar-thumb {
-  background: #4b5263;
+  background: rgba(75, 82, 99, 0.6);
   border-radius: 4px;
 }
 
 .xterminal-container .xterm-viewport::-webkit-scrollbar-thumb:hover {
-  background: #5c6370;
+  background: rgba(92, 99, 112, 0.8);
 }
 
 /* Resize handle styles - invisible by default, cursor changes on hover */

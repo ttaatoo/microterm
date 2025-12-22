@@ -203,9 +203,14 @@ export default function Home() {
     saveSettings(newSettings);
   }, []);
 
+  // Generate dynamic background style based on opacity
+  const containerStyle = opacity !== undefined ? {
+    background: `rgba(40, 44, 52, ${opacity})`,
+  } : undefined;
+
   return (
     <ErrorBoundary>
-      <main className="main-container">
+      <main className="main-container" style={containerStyle}>
         <XTerminal opacity={opacity} fontSize={fontSize} />
         <button
           className="settings-button"
