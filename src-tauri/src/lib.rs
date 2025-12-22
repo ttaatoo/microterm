@@ -94,8 +94,9 @@ pub mod macos {
         let window: Retained<NSWindow> = unsafe {
             let window_ref: &NSWindow = &*(ns_window as *const NSWindow);
             // Retain the window to ensure it's not deallocated while we use it
-            Retained::retain(window_ref as *const NSWindow as *mut NSWindow)
-                .expect("Failed to retain NSWindow - this indicates memory corruption or invalid pointer")
+            Retained::retain(window_ref as *const NSWindow as *mut NSWindow).expect(
+                "Failed to retain NSWindow - this indicates memory corruption or invalid pointer",
+            )
         };
 
         // Set window level to floating (like menubar panels)
