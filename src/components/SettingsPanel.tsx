@@ -14,6 +14,15 @@ import {
   type Settings,
 } from "@/lib/settings";
 
+// Autostart functions - dynamically imported to avoid SSR issues
+async function getAutostart() {
+  if (typeof window === "undefined" || !(window as Window & { __TAURI__?: unknown }).__TAURI__) return null;
+  const { enable, disable, isEnabled } = await import(
+    "@tauri-apps/plugin-autostart"
+  );
+  return { enable, disable, isEnabled };
+}
+
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -80,6 +89,8 @@ export default function SettingsPanel({
   const [shortcut, setShortcut] = useState(DEFAULT_SHORTCUT);
   const [shortcutEnabled, setShortcutEnabled] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
+  const [launchAtLogin, setLaunchAtLogin] = useState(false);
+  const [launchAtLoginLoading, setLaunchAtLoginLoading] = useState(true);
 
   // Initialize state from localStorage on mount
   useEffect(() => {
@@ -88,6 +99,21 @@ export default function SettingsPanel({
     setFontSize(settings.fontSize ?? 13);
     setShortcut(settings.globalShortcut ?? DEFAULT_SHORTCUT);
     setShortcutEnabled(settings.shortcutEnabled ?? true);
+
+    // Check autostart status
+    (async () => {
+      try {
+        const autostart = await getAutostart();
+        if (autostart) {
+          const enabled = await autostart.isEnabled();
+          setLaunchAtLogin(enabled);
+        }
+      } catch (error) {
+        console.error("Failed to check autostart status:", error);
+      } finally {
+        setLaunchAtLoginLoading(false);
+      }
+    })();
   }, []);
 
   // Close on ESC key press (but not when recording shortcut)
@@ -184,6 +210,22 @@ export default function SettingsPanel({
     setIsRecording(true);
   };
 
+  const handleLaunchAtLoginChange = useCallback(async (enabled: boolean) => {
+    try {
+      const autostart = await getAutostart();
+      if (!autostart) return;
+
+      if (enabled) {
+        await autostart.enable();
+      } else {
+        await autostart.disable();
+      }
+      setLaunchAtLogin(enabled);
+    } catch (error) {
+      console.error("Failed to change autostart setting:", error);
+    }
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -268,6 +310,26 @@ export default function SettingsPanel({
               {shortcutEnabled
                 ? "Click to change the shortcut. Press ESC to cancel."
                 : "Enable to set a global shortcut for quick access"}
+            </div>
+          </div>
+
+          <div className="settings-divider" />
+
+          <div className="settings-item">
+            <label className="settings-label">
+              Launch at Login
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={launchAtLogin}
+                  disabled={launchAtLoginLoading}
+                  onChange={(e) => handleLaunchAtLoginChange(e.target.checked)}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </label>
+            <div className="settings-hint">
+              Automatically start µTerm when you log in to your Mac
             </div>
           </div>
         </div>
