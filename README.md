@@ -32,15 +32,6 @@ Built with **Rust**, **Tauri 2.0**, and **Next.js 14**.
 
 Download the latest `.dmg` from the [Releases](https://github.com/ttaatoo/microterm/releases) page.
 
-> **Note for macOS users:** Since the app is not notarized, macOS Gatekeeper may block it on first launch. To open:
->
-> **Option 1:** Right-click the app → Select "Open" → Click "Open" in the dialog
->
-> **Option 2:** Run in Terminal:
-> ```bash
-> xattr -cr /Applications/µTerm.app
-> ```
-
 ### Build from Source
 
 #### Prerequisites
@@ -85,7 +76,7 @@ npm run lint
 
 ## Usage
 
-1. **Open** - Click the menubar icon (µ) to open the terminal
+1. **Open** - Click the menubar icon to open the terminal
 2. **Type** - Enter commands and press Enter to execute
 3. **Navigate** - Use Up/Down arrows to browse command history
 4. **Settings** - Click the gear icon (⚙) to adjust opacity and font size
@@ -106,7 +97,7 @@ npm run lint
 ## Project Structure
 
 ```
-menubar-terminal/
+microterm/
 ├── src/                    # Next.js frontend
 │   ├── app/               # App Router pages
 │   ├── components/        # React components
