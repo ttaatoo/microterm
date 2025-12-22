@@ -66,12 +66,7 @@ impl PtyManager {
         }
     }
 
-    pub fn create_session(
-        &self,
-        app: AppHandle,
-        cols: u16,
-        rows: u16,
-    ) -> Result<String, String> {
+    pub fn create_session(&self, app: AppHandle, cols: u16, rows: u16) -> Result<String, String> {
         // Validate PTY dimensions before creating session
         validate_pty_size(cols, rows)?;
 
