@@ -6,11 +6,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ttaatoo/menubar-terminal.git"
+    "url": "git+https://github.com/ttaatoo/microterm.git"
   },
-  "homepage": "https://github.com/ttaatoo/menubar-terminal#readme",
+  "homepage": "https://github.com/ttaatoo/microterm#readme",
   "bugs": {
-    "url": "https://github.com/ttaatoo/menubar-terminal/issues"
+    "url": "https://github.com/ttaatoo/microterm/issues"
   },
   "keywords": [
     "terminal",

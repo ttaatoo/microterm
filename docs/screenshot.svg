@@ -125,7 +125,7 @@
       <text y="225" x="18" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">npm run build</text>
 
       <!-- Build output -->
-      <text y="255" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">> menubar-terminal@1.0.0 build</text>
+      <text y="255" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">> microterm@1.0.0 build</text>
       <text y="275" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">> next build</text>
 
       <text y="305" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">   ▲ Next.js 14.2.0</text>

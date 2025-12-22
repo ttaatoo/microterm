@@ -341,9 +341,9 @@ fn toggle_window(window: &WebviewWindow) {
 fn init_logging() {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         if cfg!(debug_assertions) {
-            EnvFilter::new("menubar_terminal=debug,warn")
+            EnvFilter::new("microterm=debug,warn")
         } else {
-            EnvFilter::new("menubar_terminal=info,warn")
+            EnvFilter::new("microterm=info,warn")
         }
     });
 

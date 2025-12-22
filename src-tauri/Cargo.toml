@@ -1,11 +1,11 @@
 [package]
-name = "menubar-terminal"
+name = "microterm"
 version = "1.0.0"
 description = "A macOS menubar terminal application"
 authors = ["µTerm Contributors"]
 license = "MIT"
-repository = "https://github.com/ttaatoo/menubar-terminal"
-homepage = "https://github.com/ttaatoo/menubar-terminal"
+repository = "https://github.com/ttaatoo/microterm"
+homepage = "https://github.com/ttaatoo/microterm"
 readme = "../README.md"
 edition = "2021"
 rust-version = "1.70"
@@ -13,7 +13,7 @@ rust-version = "1.70"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "menubar_terminal"
+name = "microterm"
 crate-type = ["cdylib", "rlib"]
 
 [build-dependencies]

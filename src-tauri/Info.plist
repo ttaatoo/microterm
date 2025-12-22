@@ -7,7 +7,7 @@
   <key>CFBundleDisplayName</key>
   <string>µTerm</string>
   <key>CFBundleExecutable</key>
-  <string>menubar-terminal</string>
+  <string>microterm</string>
   <key>CFBundleIconFile</key>
   <string>icon.icns</string>
   <key>CFBundleIdentifier</key>

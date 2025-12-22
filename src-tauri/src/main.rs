@@ -1,3 +1,3 @@
 fn main() {
-    menubar_terminal::run();
+    microterm::run();
 }

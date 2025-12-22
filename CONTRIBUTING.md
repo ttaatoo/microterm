@@ -15,8 +15,8 @@ Thank you for your interest in contributing to µTerm! This document provides gu
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/menubar-terminal.git
-   cd menubar-terminal
+   git clone https://github.com/YOUR_USERNAME/microterm.git
+   cd microterm
    ```
 
 3. Install dependencies:
@@ -32,7 +32,7 @@ Thank you for your interest in contributing to µTerm! This document provides gu
 ## Project Structure
 
 ```
-menubar-terminal/
+microterm/
 ├── src/                 # Next.js frontend (TypeScript/React)
 │   ├── app/            # Next.js App Router pages
 │   ├── components/     # React components
