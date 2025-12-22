@@ -23,16 +23,16 @@ const MAX_ARGS_COUNT: usize = 100;
 
 /// Common shell built-in commands for tab completion
 const BUILTIN_COMMANDS: &[&str] = &[
-    "alias", "cat", "cd", "clear", "cp", "echo", "exit", "export", "find",
-    "grep", "help", "history", "ls", "mkdir", "mv", "pwd", "quit", "rm",
-    "type", "unalias", "unset", "where", "which",
+    "alias", "cat", "cd", "clear", "cp", "echo", "exit", "export", "find", "grep", "help",
+    "history", "ls", "mkdir", "mv", "pwd", "quit", "rm", "type", "unalias", "unset", "where",
+    "which",
 ];
 
 /// Characters that are not allowed in command names for security
 /// These could be used for shell injection if passed to a shell
 const FORBIDDEN_COMMAND_CHARS: &[char] = &[
-    ';', '&', '|', '$', '`', '(', ')', '{', '}', '[', ']',
-    '<', '>', '\n', '\r', '\0', '\'', '"', '\\',
+    ';', '&', '|', '$', '`', '(', ')', '{', '}', '[', ']', '<', '>', '\n', '\r', '\0', '\'', '"',
+    '\\',
 ];
 
 /// Validate a command string for security
@@ -248,7 +248,10 @@ pub async fn execute_command_stream(
     });
 
     // Wait for command to complete
-    let exit_code = child.wait().await.map_err(|e| format!("Failed to wait for command: {}", e))?;
+    let exit_code = child
+        .wait()
+        .await
+        .map_err(|e| format!("Failed to wait for command: {}", e))?;
 
     // Emit completion event
     let _ = app.emit("command-complete", exit_code.code().unwrap_or(0));
