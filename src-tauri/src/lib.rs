@@ -11,15 +11,21 @@ pub mod pty;
 pub mod pty_commands;
 
 use std::sync::Arc;
-use tauri::{Emitter, Listener, Manager, WebviewWindow};
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconEvent,
+    Emitter, Listener, Manager, WebviewWindow,
+};
 
 #[cfg(target_os = "macos")]
 pub mod macos {
     use block2::RcBlock;
     use objc2::rc::Retained;
     use objc2::runtime::AnyObject;
-    use objc2_app_kit::{NSEvent, NSEventMask, NSWindow, NSWindowCollectionBehavior};
-    use objc2_foundation::NSPoint;
+    use objc2_app_kit::{
+        NSApplication, NSEvent, NSEventMask, NSWindow, NSWindowCollectionBehavior,
+    };
+    use objc2_foundation::{MainThreadMarker, NSPoint};
     use parking_lot::RwLock;
     use std::ptr::NonNull;
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -173,17 +179,25 @@ pub mod macos {
         }
     }
 
-    /// Show the window without activating the app.
+    /// Show the window and activate the app to receive keyboard input.
     ///
     /// # Safety
     /// Caller must ensure `ns_window` is a valid NSWindow pointer.
     pub unsafe fn show_window(ns_window: *mut AnyObject) {
         let window: &NSWindow = unsafe { &*(ns_window as *const NSWindow) };
 
-        // Show window without activating the app
+        // Show window
         window.orderFrontRegardless();
 
-        // Make the window key so it can receive input
+        // Activate the application so it can receive keyboard input
+        // This is critical - without activation, the window shows but can't receive focus
+        // SAFETY: show_window is always called from the main thread (via run_on_main_thread or setup)
+        let mtm = MainThreadMarker::new().expect("show_window must be called from main thread");
+        let app = NSApplication::sharedApplication(mtm);
+        #[allow(deprecated)]
+        app.activateIgnoringOtherApps(true);
+
+        // Make the window key so it receives keyboard events
         window.makeKeyWindow();
 
         set_window_visible(true);
@@ -228,7 +242,7 @@ pub mod macos {
 fn position_window<R: tauri::Runtime>(window: &WebviewWindow<R>) {
     #[cfg(target_os = "macos")]
     {
-        use tauri::{Position, PhysicalPosition};
+        use tauri::{PhysicalPosition, Position};
         if let Some(monitor) = window.primary_monitor().ok().flatten() {
             let screen_size = *monitor.size();
             let screen_position = monitor.position();
@@ -279,6 +293,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(Arc::new(pty::PtyManager::new()))
         .invoke_handler(tauri::generate_handler![
             commands::execute_command,
@@ -306,21 +324,44 @@ pub fn run() {
                 }
             }
 
+            // Create quit menu for tray icon (shown on double-click)
+            let quit_item = MenuItem::with_id(app, "quit", "Quit µTerm", true, None::<&str>)?;
+            let tray_menu = Menu::with_items(app, &[&quit_item])?;
+
             // Create system tray
             // IMPORTANT: Use MouseButtonState::Up to trigger on mouse release, not press
             // This matches the behavior of native macOS menubar apps
             let _tray = tauri::tray::TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("µTerm")
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
                 .on_tray_icon_event(move |_tray, event| {
-                    // Only handle left click with button UP (released)
-                    if let tauri::tray::TrayIconEvent::Click {
-                        button: tauri::tray::MouseButton::Left,
-                        button_state: tauri::tray::MouseButtonState::Up,
-                        ..
-                    } = event
-                    {
-                        toggle_window(&window_for_tray);
+                    match event {
+                        // Single click: toggle window
+                        TrayIconEvent::Click {
+                            button: tauri::tray::MouseButton::Left,
+                            button_state: tauri::tray::MouseButtonState::Up,
+                            ..
+                        } => {
+                            toggle_window(&window_for_tray);
+                        }
+                        // Double click: show menu (handled by Tauri's built-in menu)
+                        TrayIconEvent::DoubleClick {
+                            button: tauri::tray::MouseButton::Left,
+                            ..
+                        } => {
+                            // Menu is shown automatically when set
+                        }
+                        _ => {}
+                    }
+                })
+                .on_menu_event(|app, event| {
+                    if event.id.as_ref() == "quit" {
+                        // Clean up before quitting
+                        #[cfg(target_os = "macos")]
+                        macos::cleanup();
+                        app.exit(0);
                     }
                 })
                 .build(app)?;
@@ -344,7 +385,8 @@ pub fn run() {
             // Hide window initially
             #[cfg(target_os = "macos")]
             {
-                let ns_window = window_for_shortcut.ns_window().unwrap() as *mut objc2::runtime::AnyObject;
+                let ns_window =
+                    window_for_shortcut.ns_window().unwrap() as *mut objc2::runtime::AnyObject;
                 unsafe {
                     macos::hide_window(ns_window);
                 }
@@ -357,6 +399,28 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Handle Dock icon click (Reopen event)
+            if let tauri::RunEvent::Reopen { .. } = event {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    // Show window when Dock icon is clicked
+                    #[cfg(target_os = "macos")]
+                    {
+                        let ns_window =
+                            window.ns_window().unwrap() as *mut objc2::runtime::AnyObject;
+                        unsafe {
+                            position_window(&window);
+                            macos::show_window(ns_window);
+                        }
+                    }
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            }
+        });
 }
