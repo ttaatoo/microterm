@@ -18,6 +18,8 @@ const MAX_PTY_RETRIES = 3;
 const PTY_RETRY_DELAY_MS = 500;
 /** Delay before focusing terminal after window becomes visible (ms) */
 const WINDOW_VISIBLE_FOCUS_DELAY_MS = 100;
+/** Maximum interval between double-ESC presses to trigger hide window (ms) */
+const DOUBLE_ESC_INTERVAL_MS = 300;
 
 // Key codes
 const ESC_KEY = "\x1b";
@@ -71,6 +73,7 @@ export default function XTerminal({ opacity: propOpacity, fontSize: propFontSize
   const unlistenExitRef = useRef<(() => void) | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const initializedRef = useRef(false);
+  const lastEscTimeRef = useRef<number>(0);
 
   // Update terminal background when opacity changes
   useEffect(() => {
@@ -186,14 +189,24 @@ export default function XTerminal({ opacity: propOpacity, fontSize: propFontSize
 
     // Handle user input
     terminal.onData(async (data) => {
-      // Single ESC to hide window
+      // Double-ESC to hide window, single ESC passes through to PTY
       if (data === ESC_KEY) {
-        try {
-          await invoke("hide_window");
-        } catch (error) {
-          console.error("[Window] Failed to hide window:", error);
+        const now = Date.now();
+        const timeSinceLastEsc = now - lastEscTimeRef.current;
+        lastEscTimeRef.current = now;
+
+        if (timeSinceLastEsc < DOUBLE_ESC_INTERVAL_MS) {
+          // Double ESC detected - hide window
+          try {
+            await invoke("hide_window");
+          } catch (error) {
+            console.error("[Window] Failed to hide window:", error);
+          }
+          // Reset to prevent triple-ESC from triggering again
+          lastEscTimeRef.current = 0;
+          return;
         }
-        return;
+        // Single ESC - fall through to send to PTY
       }
 
       if (sessionIdRef.current) {

@@ -1,6 +1,6 @@
 {
   "name": "microterm",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A micro terminal that lives in your macOS menubar. Lightweight, fast, always one click away.",
   "author": "µTerm Contributors",
   "license": "MIT",
@@ -42,13 +42,21 @@
     "xterm": "^5.3.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@next/eslint-plugin-next": "^16.1.0",
     "@tauri-apps/cli": "^2.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.50.0",
+    "@typescript-eslint/parser": "^8.50.0",
     "@vitejs/plugin-react": "^5.1.2",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^16.1.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "jsdom": "^27.3.0",
     "typescript": "^5.0.0",
     "vitest": "^4.0.16"

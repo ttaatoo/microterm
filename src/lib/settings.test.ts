@@ -164,6 +164,33 @@ describe("settings", () => {
       expect(settings.fontSize).toBe(DEFAULT_FONT_SIZE);
     });
 
+    it("should default onboardingComplete to false", () => {
+      const settings = loadSettings();
+      expect(settings.onboardingComplete).toBe(false);
+    });
+
+    it("should load saved onboardingComplete value", () => {
+      localStorage.setItem(
+        "microterm-settings",
+        JSON.stringify({ onboardingComplete: true })
+      );
+      const settings = loadSettings();
+      expect(settings.onboardingComplete).toBe(true);
+    });
+
+    it("should load global shortcut settings", () => {
+      localStorage.setItem(
+        "microterm-settings",
+        JSON.stringify({
+          globalShortcut: "CommandOrControl+Shift+Space",
+          shortcutEnabled: false
+        })
+      );
+      const settings = loadSettings();
+      expect(settings.globalShortcut).toBe("CommandOrControl+Shift+Space");
+      expect(settings.shortcutEnabled).toBe(false);
+    });
+
     it("should handle corrupted JSON gracefully", () => {
       localStorage.setItem("microterm-settings", "invalid json");
       const settings = loadSettings();
@@ -194,6 +221,25 @@ describe("settings", () => {
       const saved = JSON.parse(localStorage.getItem("microterm-settings")!);
       expect(saved.opacity).toBe(0.9);
       expect(saved.fontSize).toBe(18);
+    });
+
+    it("should save onboardingComplete value", () => {
+      saveSettings({ opacity: 0.9, onboardingComplete: true });
+
+      const saved = JSON.parse(localStorage.getItem("microterm-settings")!);
+      expect(saved.onboardingComplete).toBe(true);
+    });
+
+    it("should save global shortcut settings", () => {
+      saveSettings({
+        opacity: 0.9,
+        globalShortcut: "CommandOrControl+Shift+Space",
+        shortcutEnabled: true
+      });
+
+      const saved = JSON.parse(localStorage.getItem("microterm-settings")!);
+      expect(saved.globalShortcut).toBe("CommandOrControl+Shift+Space");
+      expect(saved.shortcutEnabled).toBe(true);
     });
   });
 });

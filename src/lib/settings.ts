@@ -36,6 +36,7 @@ export interface Settings {
   fontSize?: number;
   globalShortcut?: string;
   shortcutEnabled?: boolean;
+  onboardingComplete?: boolean;
 }
 
 const defaultSettings: Settings = {
@@ -44,6 +45,7 @@ const defaultSettings: Settings = {
   fontSize: DEFAULT_FONT_SIZE,
   globalShortcut: DEFAULT_SHORTCUT,
   shortcutEnabled: true,
+  onboardingComplete: false,
 };
 
 export function loadSettings(): Settings {
@@ -63,6 +65,7 @@ export function loadSettings(): Settings {
         fontSize: clampFontSize(parsed.fontSize ?? DEFAULT_FONT_SIZE),
         globalShortcut: parsed.globalShortcut ?? DEFAULT_SHORTCUT,
         shortcutEnabled: parsed.shortcutEnabled ?? true,
+        onboardingComplete: parsed.onboardingComplete ?? false,
       };
     }
   } catch (error) {

@@ -81,6 +81,7 @@ export default function SettingsPanel({
   const [shortcutEnabled, setShortcutEnabled] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
 
+  // Initialize state from localStorage on mount
   useEffect(() => {
     const settings = loadSettings();
     setOpacity(settings.opacity);

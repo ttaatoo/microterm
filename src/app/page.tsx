@@ -13,6 +13,7 @@ import {
   type Settings,
 } from "@/lib/settings";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ToastContainer, type ToastType } from "@/components/Toast";
 import {
   registerGlobalShortcut,
   unregisterGlobalShortcut,
@@ -38,6 +39,11 @@ const SettingsPanel = dynamic(() => import("@/components/SettingsPanel"), {
   ssr: false,
 });
 
+// Dynamically import Onboarding
+const Onboarding = dynamic(() => import("@/components/Onboarding"), {
+  ssr: false,
+});
+
 // Gear icon SVG component
 function GearIcon() {
   return (
@@ -55,12 +61,32 @@ function GearIcon() {
   );
 }
 
+// Toast state type
+interface ToastItem {
+  id: string;
+  message: string;
+  type: ToastType;
+}
+
 export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [opacity, setOpacity] = useState<number | undefined>(undefined);
   const [fontSize, setFontSize] = useState<number | undefined>(undefined);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const settingsRef = useRef<Settings | null>(null);
   const currentShortcutRef = useRef<string | null>(null);
+
+  // Add toast notification
+  const addToast = useCallback((message: string, type: ToastType = "info") => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    setToasts((prev) => [...prev, { id, message, type }]);
+  }, []);
+
+  // Remove toast notification
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   // Load settings and restore window size on mount
   useEffect(() => {
@@ -69,6 +95,11 @@ export default function Home() {
       settingsRef.current = settings;
       setOpacity(settings.opacity);
       setFontSize(settings.fontSize);
+
+      // Show onboarding for first-time users
+      if (!settings.onboardingComplete) {
+        setShowOnboarding(true);
+      }
 
       // Restore window size from settings
       if (settings.windowSize) {
@@ -93,6 +124,10 @@ export default function Home() {
           currentShortcutRef.current = settings.globalShortcut;
         } catch (error) {
           console.error("Failed to register global shortcut:", error);
+          addToast(
+            `Shortcut "${settings.globalShortcut}" may be in use by another app`,
+            "warning"
+          );
         }
       }
     };
@@ -104,6 +139,8 @@ export default function Home() {
         unregisterGlobalShortcut(currentShortcutRef.current).catch(console.error);
       }
     };
+    // addToast is stable (useCallback with no deps), safe to omit from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSettingsChange = useCallback(async (settings: Settings) => {
@@ -135,9 +172,13 @@ export default function Home() {
         currentShortcutRef.current = newShortcut;
       } catch (error) {
         console.error("Failed to register shortcut:", error);
+        addToast(
+          `Shortcut "${newShortcut}" may be in use by another app`,
+          "warning"
+        );
       }
     }
-  }, []);
+  }, [addToast]);
 
   // Handle window resize - save new size to settings
   const handleResize = useCallback((width: number, height: number) => {
@@ -145,6 +186,18 @@ export default function Home() {
     const newSettings: Settings = {
       ...currentSettings,
       windowSize: { width: Math.round(width), height: Math.round(height) },
+    };
+    settingsRef.current = newSettings;
+    saveSettings(newSettings);
+  }, []);
+
+  // Handle onboarding completion
+  const handleOnboardingComplete = useCallback(() => {
+    setShowOnboarding(false);
+    const currentSettings = settingsRef.current ?? loadSettings();
+    const newSettings: Settings = {
+      ...currentSettings,
+      onboardingComplete: true,
     };
     settingsRef.current = newSettings;
     saveSettings(newSettings);
@@ -182,6 +235,8 @@ export default function Home() {
           onClose={() => setSettingsOpen(false)}
           onSettingsChange={handleSettingsChange}
         />
+        {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
       </main>
     </ErrorBoundary>
   );

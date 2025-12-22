@@ -313,3 +313,155 @@ impl Default for PtyManager {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_pty_size_valid() {
+        assert!(validate_pty_size(80, 24).is_ok());
+        assert!(validate_pty_size(MIN_PTY_COLS, MIN_PTY_ROWS).is_ok());
+        assert!(validate_pty_size(MAX_PTY_COLS, MAX_PTY_ROWS).is_ok());
+        assert!(validate_pty_size(120, 40).is_ok());
+    }
+
+    #[test]
+    fn test_validate_pty_size_invalid_cols() {
+        // Too small
+        assert!(validate_pty_size(MIN_PTY_COLS - 1, 24).is_err());
+        assert!(validate_pty_size(0, 24).is_err());
+
+        // Too large
+        assert!(validate_pty_size(MAX_PTY_COLS + 1, 24).is_err());
+        assert!(validate_pty_size(1000, 24).is_err());
+    }
+
+    #[test]
+    fn test_validate_pty_size_invalid_rows() {
+        // Too small
+        assert!(validate_pty_size(80, MIN_PTY_ROWS - 1).is_err());
+        assert!(validate_pty_size(80, 0).is_err());
+
+        // Too large
+        assert!(validate_pty_size(80, MAX_PTY_ROWS + 1).is_err());
+        assert!(validate_pty_size(80, 500).is_err());
+    }
+
+    #[test]
+    fn test_validate_pty_size_error_message() {
+        let result = validate_pty_size(10, 24);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("cols"));
+        assert!(err.contains("10"));
+
+        let result = validate_pty_size(80, 2);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("rows"));
+        assert!(err.contains("2"));
+    }
+
+    #[test]
+    fn test_pty_manager_new() {
+        let manager = PtyManager::new();
+        let sessions = manager.sessions.lock();
+        assert!(sessions.is_empty());
+    }
+
+    #[test]
+    fn test_pty_manager_default() {
+        let manager = PtyManager::default();
+        let sessions = manager.sessions.lock();
+        assert!(sessions.is_empty());
+    }
+
+    #[test]
+    fn test_write_to_nonexistent_session() {
+        let manager = PtyManager::new();
+        let result = manager.write_to_session("nonexistent-session-id", "test");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Session not found"));
+    }
+
+    #[test]
+    fn test_resize_nonexistent_session() {
+        let manager = PtyManager::new();
+        let result = manager.resize_session("nonexistent-session-id", 80, 24);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Session not found"));
+    }
+
+    #[test]
+    fn test_close_nonexistent_session() {
+        let manager = PtyManager::new();
+        // Closing a non-existent session should succeed (no-op)
+        let result = manager.close_session("nonexistent-session-id");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_resize_with_invalid_dimensions() {
+        let manager = PtyManager::new();
+        // Even with a non-existent session, validation should fail first
+        let result = manager.resize_session("any-session", 0, 24);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid cols"));
+
+        let result = manager.resize_session("any-session", 80, 0);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid rows"));
+    }
+
+    #[test]
+    fn test_pty_output_serialization() {
+        let output = PtyOutput {
+            session_id: "test-session".to_string(),
+            data: "Hello, World!".to_string(),
+        };
+
+        let json = serde_json::to_string(&output).unwrap();
+        assert!(json.contains("test-session"));
+        assert!(json.contains("Hello, World!"));
+
+        let deserialized: PtyOutput = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.session_id, "test-session");
+        assert_eq!(deserialized.data, "Hello, World!");
+    }
+
+    #[test]
+    fn test_pty_exit_serialization() {
+        let exit_with_code = PtyExit {
+            session_id: "test-session".to_string(),
+            exit_code: Some(0),
+        };
+
+        let json = serde_json::to_string(&exit_with_code).unwrap();
+        let deserialized: PtyExit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.session_id, "test-session");
+        assert_eq!(deserialized.exit_code, Some(0));
+
+        let exit_without_code = PtyExit {
+            session_id: "test-session".to_string(),
+            exit_code: None,
+        };
+
+        let json = serde_json::to_string(&exit_without_code).unwrap();
+        let deserialized: PtyExit = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.exit_code, None);
+    }
+
+    #[test]
+    fn test_pty_constants() {
+        // Ensure constants are sensible
+        assert!(MIN_PTY_COLS > 0);
+        assert!(MIN_PTY_ROWS > 0);
+        assert!(MAX_PTY_COLS > MIN_PTY_COLS);
+        assert!(MAX_PTY_ROWS > MIN_PTY_ROWS);
+
+        // Standard terminal size should be valid
+        assert!(validate_pty_size(80, 24).is_ok());
+        assert!(validate_pty_size(132, 43).is_ok()); // Wide terminal
+    }
+}
