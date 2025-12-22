@@ -30,7 +30,16 @@ Built with **Rust**, **Tauri 2.0**, and **Next.js 14**.
 
 ### Download
 
-Download the latest release from the [Releases](https://github.com/ttaatoo/microterm/releases) page.
+Download the latest `.dmg` from the [Releases](https://github.com/ttaatoo/microterm/releases) page.
+
+> **Note for macOS users:** Since the app is not notarized, macOS Gatekeeper may block it on first launch. To open:
+>
+> **Option 1:** Right-click the app → Select "Open" → Click "Open" in the dialog
+>
+> **Option 2:** Run in Terminal:
+> ```bash
+> xattr -cr /Applications/µTerm.app
+> ```
 
 ### Build from Source
 
