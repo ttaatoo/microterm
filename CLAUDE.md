@@ -212,3 +212,54 @@ BREAKING CHANGE: drop support for macOS 13 and earlier
 3. description 首字母小写，结尾不加句号
 4. body 和 footer 前需空一行
 5. BREAKING CHANGE 必须大写
+
+## Release 流程
+
+**每次发布新版本时，必须执行以下步骤：**
+
+### 1. 更新版本号
+
+编辑 `src-tauri/tauri.conf.json` 中的 `version` 字段。
+
+### 2. 更新 CHANGELOG.md
+
+在 `CHANGELOG.md` 中添加新版本的变更记录，遵循 [Keep a Changelog](https://keepachangelog.com/) 格式。
+
+### 3. 构建 DMG 安装包
+
+```bash
+# 构建 macOS 应用（生成 .app、.dmg 和 .tar.gz）
+npm run tauri build
+```
+
+构建产物位置：
+- `src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg` - DMG 安装包
+- `src-tauri/target/release/bundle/macos/µTerm.app` - 应用程序
+
+### 4. 创建 Git Tag
+
+```bash
+git tag -a v<version> -m "µTerm v<version> - <简短描述>"
+git push origin v<version>
+```
+
+### 5. 创建 GitHub Release 并上传 DMG
+
+```bash
+# 创建 release 并上传 DMG
+gh release create v<version> \
+  --title "µTerm v<version> - <标题>" \
+  --notes "<release notes>" \
+  "src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg"
+```
+
+**⚠️ 重要：必须上传 DMG 安装包！** 用户需要 DMG 文件来安装应用，不要只上传 .tar.gz 压缩包。
+
+### Release Checklist
+
+- [ ] 更新 `tauri.conf.json` 版本号
+- [ ] 更新 `CHANGELOG.md`
+- [ ] 运行 `npm run tauri build` 构建
+- [ ] 创建 git tag 并 push
+- [ ] 创建 GitHub release
+- [ ] **上传 DMG 安装包到 release**
