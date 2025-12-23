@@ -129,9 +129,9 @@ The SVG mockup includes:
 
 ## Git Commit Convention
 
-本项目遵循 [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) 规范。
+This project follows the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) specification.
 
-### Commit Message 格式
+### Commit Message Format
 
 ```
 <type>[optional scope]: <description>
@@ -141,59 +141,59 @@ The SVG mockup includes:
 [optional footer(s)]
 ```
 
-### Type 类型
+### Type
 
-| Type | 说明 | 语义化版本 |
-|------|------|-----------|
-| `feat` | 新功能 | MINOR |
-| `fix` | Bug 修复 | PATCH |
-| `docs` | 文档变更 | - |
-| `style` | 代码格式（不影响功能） | - |
-| `refactor` | 重构（非 feat/fix） | - |
-| `perf` | 性能优化 | - |
-| `test` | 添加/修改测试 | - |
-| `build` | 构建系统或外部依赖变更 | - |
-| `ci` | CI 配置变更 | - |
-| `chore` | 其他不修改 src 或 test 的变更 | - |
+| Type | Description | Semantic Version |
+|------|-------------|------------------|
+| `feat` | New feature | MINOR |
+| `fix` | Bug fix | PATCH |
+| `docs` | Documentation changes | - |
+| `style` | Code formatting (no functional changes) | - |
+| `refactor` | Code refactoring (neither feat nor fix) | - |
+| `perf` | Performance improvement | - |
+| `test` | Add/modify tests | - |
+| `build` | Build system or external dependency changes | - |
+| `ci` | CI configuration changes | - |
+| `chore` | Other changes not modifying src or test | - |
 
-### Scope（可选）
+### Scope (Optional)
 
-描述代码库中受影响的部分，例如：
+Describes the affected part of the codebase, for example:
 - `feat(terminal): add command history navigation`
 - `fix(tauri): resolve window positioning issue`
 
 ### BREAKING CHANGE
 
-破坏性变更对应语义化版本的 MAJOR，两种标记方式：
+Breaking changes correspond to MAJOR in semantic versioning. Two ways to mark them:
 
-**方式一：** 在 type/scope 后加 `!`
+**Option 1:** Add `!` after type/scope
 ```
 feat(api)!: change command output format
 ```
 
-**方式二：** 在 footer 中声明
+**Option 2:** Declare in footer
 ```
 feat: redesign terminal output
 
 BREAKING CHANGE: output format changed from plain text to structured JSON
 ```
 
-### 示例
+### Examples
 
 ```bash
-# 简单提交
+# Simple commit
 feat: add tab completion support
 
-# 带 scope
+# With scope
 fix(commands): handle empty input gracefully
 
-# 带 body
+# With body
 feat(terminal): add command history
 
 Implement up/down arrow navigation through previous commands.
 History persists across sessions using localStorage.
 
-# 带 footer
+# With footer
 fix: resolve race condition in stream output
 
 Reviewed-by: John
@@ -205,21 +205,21 @@ feat!: update minimum supported macOS version to 14.0
 BREAKING CHANGE: drop support for macOS 13 and earlier
 ```
 
-### 规则总结
+### Rules Summary
 
-1. type 和 description 为必填项
-2. description 使用祈使语气（"add" 而非 "added"）
-3. description 首字母小写，结尾不加句号
-4. body 和 footer 前需空一行
-5. BREAKING CHANGE 必须大写
+1. type and description are required
+2. description uses imperative mood ("add" not "added")
+3. description starts lowercase, no period at end
+4. body and footer must be preceded by a blank line
+5. BREAKING CHANGE must be uppercase
 
-## Release 流程
+## Release Workflow
 
-**每次发布新版本时，必须按顺序执行以下所有步骤：**
+**When releasing a new version, all the following steps must be executed in order:**
 
-### 1. 更新版本号
+### 1. Update Version Number
 
-编辑 `src-tauri/tauri.conf.json` 中的 `version` 字段：
+Edit the `version` field in `src-tauri/tauri.conf.json`:
 
 ```json
 {
@@ -227,26 +227,26 @@ BREAKING CHANGE: drop support for macOS 13 and earlier
 }
 ```
 
-### 2. 更新 CHANGELOG.md
+### 2. Update CHANGELOG.md
 
-在 `CHANGELOG.md` 顶部添加新版本的变更记录，遵循 [Keep a Changelog](https://keepachangelog.com/) 格式：
+Add the new version's changelog entry at the top of `CHANGELOG.md`, following the [Keep a Changelog](https://keepachangelog.com/) format:
 
 ```markdown
 ## [x.y.z] - YYYY-MM-DD
 
 ### Added
-- 新功能...
+- New features...
 
 ### Changed
-- 变更...
+- Changes...
 
 ### Fixed
-- 修复...
+- Fixes...
 ```
 
-同时更新文件底部的版本对比链接。
+Also update the version comparison links at the bottom of the file.
 
-### 3. 提交版本更新
+### 3. Commit Version Update
 
 ```bash
 git add src-tauri/tauri.conf.json CHANGELOG.md
@@ -254,57 +254,57 @@ git commit -m "chore: bump version to x.y.z"
 git push origin main
 ```
 
-### 4. 构建 DMG 安装包
+### 4. Build DMG Installer
 
 ```bash
-# 构建 macOS 应用（生成 .app 和 .dmg）
+# Build macOS application (generates .app and .dmg)
 npm run tauri build
 ```
 
-构建产物位置：
-- `src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg` - DMG 安装包
-- `src-tauri/target/release/bundle/macos/µTerm.app` - 应用程序
+Build artifacts location:
+- `src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg` - DMG installer
+- `src-tauri/target/release/bundle/macos/µTerm.app` - Application bundle
 
-### 5. 创建 Git Tag
+### 5. Create Git Tag
 
 ```bash
 git tag -a v<version> -m "$(cat <<'EOF'
-µTerm v<version> - <简短描述>
+µTerm v<version> - <short description>
 
 Features:
-- 功能1
-- 功能2
+- Feature 1
+- Feature 2
 
 Changes:
-- 变更1
+- Change 1
 
 Fixes:
-- 修复1
+- Fix 1
 EOF
 )"
 git push origin v<version>
 ```
 
-### 6. 创建 GitHub Release 并上传 DMG
+### 6. Create GitHub Release and Upload DMG
 
 ```bash
-# 创建 release 并上传 DMG
+# Create release and upload DMG
 gh release create v<version> \
-  --title "µTerm v<version> - <标题>" \
+  --title "µTerm v<version> - <title>" \
   --notes "$(cat <<'EOF'
 ## What's New
 
 ### ✨ Features
-- **功能标题** - 功能描述
+- **Feature title** - Feature description
 
 ### 🎨 UI/UX
-- 界面改进
+- UI improvements
 
 ### 🔧 Technical
-- 技术改进
+- Technical improvements
 
 ### 🐛 Bug Fixes
-- 修复内容
+- Bug fix content
 
 ---
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
@@ -313,41 +313,41 @@ EOF
   "src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg"
 ```
 
-**⚠️ 重要：必须上传 DMG 安装包！** 用户需要 DMG 文件来安装应用。
+**⚠️ Important: DMG installer must be uploaded!** Users need the DMG file to install the application.
 
-### 7. 验证 Release
+### 7. Verify Release
 
 ```bash
-# 确认 release assets 正确
+# Confirm release assets are correct
 gh release view v<version> --json assets --jq '.assets[].name'
 ```
 
-应该看到：`µTerm_<version>_aarch64.dmg`
+Expected output: `µTerm_<version>_aarch64.dmg`
 
 ### Release Checklist
 
-发布前确认所有步骤完成：
+Confirm all steps are completed before releasing:
 
-- [ ] 更新 `tauri.conf.json` 版本号
-- [ ] 更新 `CHANGELOG.md`（包括底部对比链接）
-- [ ] 提交并推送版本更新
-- [ ] 运行 `npm run tauri build` 构建
-- [ ] 创建 git tag（带详细 release notes）并 push
-- [ ] 创建 GitHub release
-- [ ] **上传 DMG 安装包到 release**
-- [ ] 验证 release assets 正确
+- [ ] Update `tauri.conf.json` version number
+- [ ] Update `CHANGELOG.md` (including comparison links at bottom)
+- [ ] Commit and push version update
+- [ ] Run `npm run tauri build` to build
+- [ ] Create git tag (with detailed release notes) and push
+- [ ] Create GitHub release
+- [ ] **Upload DMG installer to release**
+- [ ] Verify release assets are correct
 
-### 更新已有 Release 的 Tag
+### Updating an Existing Release Tag
 
-如果需要更新已发布的 tag（例如修复 CI 问题后）：
+If you need to update a published tag (e.g., after fixing CI issues):
 
 ```bash
-# 删除本地和远程 tag
+# Delete local and remote tag
 git tag -d v<version>
 git push origin :refs/tags/v<version>
 
-# 删除 GitHub release
+# Delete GitHub release
 gh release delete v<version> --yes
 
-# 重新创建 tag 和 release（按上述步骤 5-7）
+# Recreate tag and release (follow steps 5-7 above)
 ```
