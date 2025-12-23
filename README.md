@@ -31,6 +31,13 @@ Built with **Rust**, **Tauri 2.0**, and **Next.js 14**.
 
 ## Installation
 
+### Homebrew (Recommended)
+
+```bash
+brew tap ttaatoo/microterm
+brew install --cask microterm
+```
+
 ### Download
 
 Download the latest `.dmg` from the [Releases](https://github.com/ttaatoo/microterm/releases) page.
@@ -88,15 +95,15 @@ npm run lint
 
 ### Keyboard Shortcuts
 
-| Shortcut | Action |
-| -------- | ------ |
-| `⌘⇧T` | Toggle terminal window (global, configurable) |
-| `⌘T` | New tab |
-| `⌘W` | Close current tab |
-| `⌘1-9` | Switch to tab 1-9 |
-| `⌘[` | Previous tab |
-| `⌘]` | Next tab |
-| `ESC ESC` | Hide window (double-tap) |
+| Shortcut  | Action                                        |
+| --------- | --------------------------------------------- |
+| `⌘⇧T`     | Toggle terminal window (global, configurable) |
+| `⌘T`      | New tab                                       |
+| `⌘W`      | Close current tab                             |
+| `⌘1-9`    | Switch to tab 1-9                             |
+| `⌘[`      | Previous tab                                  |
+| `⌘]`      | Next tab                                      |
+| `ESC ESC` | Hide window (double-tap)                      |
 
 ## Tech Stack
 
