@@ -215,20 +215,49 @@ BREAKING CHANGE: drop support for macOS 13 and earlier
 
 ## Release 流程
 
-**每次发布新版本时，必须执行以下步骤：**
+**每次发布新版本时，必须按顺序执行以下所有步骤：**
 
 ### 1. 更新版本号
 
-编辑 `src-tauri/tauri.conf.json` 中的 `version` 字段。
+编辑 `src-tauri/tauri.conf.json` 中的 `version` 字段：
+
+```json
+{
+  "version": "x.y.z"
+}
+```
 
 ### 2. 更新 CHANGELOG.md
 
-在 `CHANGELOG.md` 中添加新版本的变更记录，遵循 [Keep a Changelog](https://keepachangelog.com/) 格式。
+在 `CHANGELOG.md` 顶部添加新版本的变更记录，遵循 [Keep a Changelog](https://keepachangelog.com/) 格式：
 
-### 3. 构建 DMG 安装包
+```markdown
+## [x.y.z] - YYYY-MM-DD
+
+### Added
+- 新功能...
+
+### Changed
+- 变更...
+
+### Fixed
+- 修复...
+```
+
+同时更新文件底部的版本对比链接。
+
+### 3. 提交版本更新
 
 ```bash
-# 构建 macOS 应用（生成 .app、.dmg 和 .tar.gz）
+git add src-tauri/tauri.conf.json CHANGELOG.md
+git commit -m "chore: bump version to x.y.z"
+git push origin main
+```
+
+### 4. 构建 DMG 安装包
+
+```bash
+# 构建 macOS 应用（生成 .app 和 .dmg）
 npm run tauri build
 ```
 
@@ -236,30 +265,89 @@ npm run tauri build
 - `src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg` - DMG 安装包
 - `src-tauri/target/release/bundle/macos/µTerm.app` - 应用程序
 
-### 4. 创建 Git Tag
+### 5. 创建 Git Tag
 
 ```bash
-git tag -a v<version> -m "µTerm v<version> - <简短描述>"
+git tag -a v<version> -m "$(cat <<'EOF'
+µTerm v<version> - <简短描述>
+
+Features:
+- 功能1
+- 功能2
+
+Changes:
+- 变更1
+
+Fixes:
+- 修复1
+EOF
+)"
 git push origin v<version>
 ```
 
-### 5. 创建 GitHub Release 并上传 DMG
+### 6. 创建 GitHub Release 并上传 DMG
 
 ```bash
 # 创建 release 并上传 DMG
 gh release create v<version> \
   --title "µTerm v<version> - <标题>" \
-  --notes "<release notes>" \
+  --notes "$(cat <<'EOF'
+## What's New
+
+### ✨ Features
+- **功能标题** - 功能描述
+
+### 🎨 UI/UX
+- 界面改进
+
+### 🔧 Technical
+- 技术改进
+
+### 🐛 Bug Fixes
+- 修复内容
+
+---
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)" \
   "src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg"
 ```
 
-**⚠️ 重要：必须上传 DMG 安装包！** 用户需要 DMG 文件来安装应用，不要只上传 .tar.gz 压缩包。
+**⚠️ 重要：必须上传 DMG 安装包！** 用户需要 DMG 文件来安装应用。
+
+### 7. 验证 Release
+
+```bash
+# 确认 release assets 正确
+gh release view v<version> --json assets --jq '.assets[].name'
+```
+
+应该看到：`µTerm_<version>_aarch64.dmg`
 
 ### Release Checklist
 
+发布前确认所有步骤完成：
+
 - [ ] 更新 `tauri.conf.json` 版本号
-- [ ] 更新 `CHANGELOG.md`
+- [ ] 更新 `CHANGELOG.md`（包括底部对比链接）
+- [ ] 提交并推送版本更新
 - [ ] 运行 `npm run tauri build` 构建
-- [ ] 创建 git tag 并 push
+- [ ] 创建 git tag（带详细 release notes）并 push
 - [ ] 创建 GitHub release
 - [ ] **上传 DMG 安装包到 release**
+- [ ] 验证 release assets 正确
+
+### 更新已有 Release 的 Tag
+
+如果需要更新已发布的 tag（例如修复 CI 问题后）：
+
+```bash
+# 删除本地和远程 tag
+git tag -d v<version>
+git push origin :refs/tags/v<version>
+
+# 删除 GitHub release
+gh release delete v<version> --yes
+
+# 重新创建 tag 和 release（按上述步骤 5-7）
+```
