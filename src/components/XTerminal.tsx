@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import { Terminal } from "@xterm/xterm";
+import { loadSettings } from "@/lib/settings";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { loadSettings } from "@/lib/settings";
+import { useCallback, useEffect, useRef } from "react";
 
 // Timing constants
 /** Delay before restarting PTY session after process exit (ms) */
@@ -24,29 +24,42 @@ const DOUBLE_ESC_INTERVAL_MS = 300;
 // Key codes
 const ESC_KEY = "\x1b";
 
-// Base theme colors (One Dark Pro Vivid)
+/** Interval for polling current working directory (ms) */
+const CWD_POLL_INTERVAL_MS = 1000;
+
+/**
+ * Extract directory name from full path
+ * Returns the last component of the path (directory name)
+ */
+function extractDirName(path: string): string {
+  const parts = path.split("/").filter(Boolean);
+  return parts[parts.length - 1] || "/";
+}
+
+// Base theme colors (One Dark Pro)
+// https://github.com/Binaryify/OneDark-Pro
 const BASE_THEME = {
   foreground: "#abb2bf",
   cursor: "#528bff",
   cursorAccent: "#282c34",
-  selectionBackground: "rgba(62, 68, 81, 0.5)",
+  selectionBackground: "#abb2bf30",
   selectionForeground: "#ffffff",
-  black: "#282c34",
-  red: "#ef596f",
-  green: "#89ca78",
-  yellow: "#e5c07b",
-  blue: "#52adf2",
-  magenta: "#d55fde",
-  cyan: "#2bbac5",
-  white: "#abb2bf",
-  brightBlack: "#5c6370",
-  brightRed: "#ef596f",
-  brightGreen: "#89ca78",
-  brightYellow: "#e5c07b",
-  brightBlue: "#52adf2",
-  brightMagenta: "#d55fde",
-  brightCyan: "#2bbac5",
-  brightWhite: "#ffffff",
+  black: "#3f4451",
+  red: "#e05561",
+  green: "#8cc265",
+  yellow: "#d18f52",
+  blue: "#4aa5f0",
+  magenta: "#c162de",
+  cyan: "#42b3c2",
+  white: "#d7dae0",
+  brightBlack: "#4f5666",
+  brightRed: "#ff616e",
+  brightGreen: "#a5e075",
+  brightYellow: "#f0a45d",
+  brightBlue: "#4dc4ff",
+  brightMagenta: "#de73ff",
+  brightCyan: "#4cd1e0",
+  brightWhite: "#e6e6e6",
 };
 
 interface PtyOutput {
@@ -62,9 +75,20 @@ interface PtyExit {
 interface XTerminalProps {
   opacity?: number;
   fontSize?: number;
+  tabId?: string;
+  isVisible?: boolean;
+  onSessionCreated?: (sessionId: string) => void;
+  onTitleChange?: (title: string) => void;
 }
 
-export default function XTerminal({ opacity: propOpacity, fontSize: propFontSize }: XTerminalProps) {
+export default function XTerminal({
+  opacity: propOpacity,
+  fontSize: propFontSize,
+  tabId: _tabId,
+  isVisible = true,
+  onSessionCreated,
+  onTitleChange,
+}: XTerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -80,7 +104,7 @@ export default function XTerminal({ opacity: propOpacity, fontSize: propFontSize
     if (xtermRef.current && propOpacity !== undefined) {
       xtermRef.current.options.theme = {
         ...BASE_THEME,
-        background: `rgba(40, 44, 52, ${propOpacity})`,
+        background: `rgba(0, 0, 0, ${propOpacity})`,
       };
     }
   }, [propOpacity]);
@@ -117,7 +141,7 @@ export default function XTerminal({ opacity: propOpacity, fontSize: propFontSize
       letterSpacing: 0,
       theme: {
         ...BASE_THEME,
-        background: `rgba(40, 44, 52, ${initialOpacity})`,
+        background: `rgba(0, 0, 0, ${initialOpacity})`,
       },
       allowTransparency: true,
       scrollback: 10000,
@@ -168,6 +192,7 @@ export default function XTerminal({ opacity: propOpacity, fontSize: propFontSize
           rows: r,
         });
         sessionIdRef.current = sessionId;
+        onSessionCreated?.(sessionId);
       } catch (error) {
         console.error("[PTY] Failed to create session:", error);
         terminal.write(`\x1b[31mFailed to create PTY session: ${error}\x1b[0m\r\n`);
@@ -179,7 +204,9 @@ export default function XTerminal({ opacity: propOpacity, fontSize: propFontSize
           await new Promise((resolve) => setTimeout(resolve, PTY_RETRY_DELAY_MS * nextRetry));
           return createSession(c, r, nextRetry);
         } else {
-          terminal.write(`\x1b[31mFailed to create terminal after ${MAX_PTY_RETRIES} attempts.\x1b[0m\r\n`);
+          terminal.write(
+            `\x1b[31mFailed to create terminal after ${MAX_PTY_RETRIES} attempts.\x1b[0m\r\n`
+          );
           terminal.write(`\x1b[33mPlease restart the application.\x1b[0m\r\n`);
         }
       }
@@ -293,9 +320,7 @@ export default function XTerminal({ opacity: propOpacity, fontSize: propFontSize
       }
       // Close PTY session
       if (sessionIdRef.current) {
-        invoke("close_pty_session", { sessionId: sessionIdRef.current }).catch(
-          console.error
-        );
+        invoke("close_pty_session", { sessionId: sessionIdRef.current }).catch(console.error);
         sessionIdRef.current = null;
       }
       // Dispose terminal
@@ -384,10 +409,79 @@ export default function XTerminal({ opacity: propOpacity, fontSize: propFontSize
     };
   }, []);
 
+  // Focus terminal and re-fit when becoming visible
+  useEffect(() => {
+    if (isVisible && xtermRef.current && fitAddonRef.current) {
+      // Use requestAnimationFrame to ensure layout is complete before fitting
+      // This prevents rendering issues when switching between tabs
+      const fitTerminal = async () => {
+        // Wait for next frame to ensure display:block has taken effect
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        // Wait another frame for layout to stabilize
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+
+        if (fitAddonRef.current && xtermRef.current) {
+          fitAddonRef.current.fit();
+
+          // Also resize PTY to match new dimensions
+          if (sessionIdRef.current) {
+            const { cols, rows } = xtermRef.current;
+            try {
+              const { invoke } = await import("@tauri-apps/api/core");
+              await invoke("resize_pty", {
+                sessionId: sessionIdRef.current,
+                cols,
+                rows,
+              });
+            } catch (error) {
+              console.error("[PTY] Resize on visibility change failed:", error);
+            }
+          }
+
+          xtermRef.current.focus();
+        }
+      };
+
+      fitTerminal();
+    }
+  }, [isVisible]);
+
+  // Poll for current working directory changes
+  useEffect(() => {
+    if (!isVisible) return;
+
+    let lastCwd = "";
+
+    const pollCwd = async () => {
+      if (!sessionIdRef.current) return;
+
+      try {
+        const { invoke } = await import("@tauri-apps/api/core");
+        const cwd = await invoke<string | null>("get_pty_cwd", {
+          sessionId: sessionIdRef.current,
+        });
+
+        if (cwd && cwd !== lastCwd) {
+          lastCwd = cwd;
+          const dirName = extractDirName(cwd);
+          onTitleChange?.(dirName);
+        }
+      } catch {
+        // Session may have been closed, ignore errors
+      }
+    };
+
+    // Poll immediately and then on interval
+    pollCwd();
+    const intervalId = setInterval(pollCwd, CWD_POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [isVisible, onTitleChange]);
+
   return (
     <div
       ref={terminalRef}
-      className="xterminal-container"
+      className={`xterminal-container ${isVisible ? "terminal-visible" : "terminal-hidden"}`}
       onClick={() => xtermRef.current?.focus()}
     />
   );

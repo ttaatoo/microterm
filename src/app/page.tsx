@@ -18,6 +18,8 @@ import {
   registerGlobalShortcut,
   unregisterGlobalShortcut,
 } from "@/lib/tauri";
+import { TabProvider, useTabContext } from "@/contexts/TabContext";
+import { useTabShortcuts } from "@/hooks/useTabShortcuts";
 
 // Dynamically import XTerminal to avoid SSR issues with xterm.js
 const XTerminal = dynamic(() => import("@/components/XTerminal"), {
@@ -41,6 +43,11 @@ const SettingsPanel = dynamic(() => import("@/components/SettingsPanel"), {
 
 // Dynamically import Onboarding
 const Onboarding = dynamic(() => import("@/components/Onboarding"), {
+  ssr: false,
+});
+
+// Dynamically import TabBar
+const TabBar = dynamic(() => import("@/components/TabBar"), {
   ssr: false,
 });
 
@@ -68,7 +75,7 @@ interface ToastItem {
   type: ToastType;
 }
 
-export default function Home() {
+function HomeContent() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [opacity, setOpacity] = useState<number | undefined>(undefined);
   const [fontSize, setFontSize] = useState<number | undefined>(undefined);
@@ -76,6 +83,10 @@ export default function Home() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const settingsRef = useRef<Settings | null>(null);
   const currentShortcutRef = useRef<string | null>(null);
+  const { tabs, activeTabId, updateTabSessionId, updateTabTitle } = useTabContext();
+
+  // Tab keyboard shortcuts (disabled when settings panel is open)
+  useTabShortcuts(settingsOpen);
 
   // Add toast notification
   const addToast = useCallback((message: string, type: ToastType = "info") => {
@@ -204,45 +215,70 @@ export default function Home() {
   }, []);
 
   // Generate dynamic background style based on opacity
+  // Use pure black to match terminal background and avoid color mismatch during resize
   const containerStyle = opacity !== undefined ? {
-    background: `rgba(40, 44, 52, ${opacity})`,
+    background: `rgba(0, 0, 0, ${opacity})`,
   } : undefined;
 
+  const settingsButton = (
+    <button
+      className="settings-button"
+      onClick={() => setSettingsOpen(true)}
+      title="Settings"
+    >
+      <GearIcon />
+    </button>
+  );
+
+  return (
+    <main className="main-container" style={containerStyle}>
+      <TabBar settingsButton={settingsButton} />
+      <div className="terminal-area">
+        {tabs.map((tab) => (
+          <XTerminal
+            key={tab.id}
+            tabId={tab.id}
+            isVisible={tab.id === activeTabId}
+            opacity={opacity}
+            fontSize={fontSize}
+            onSessionCreated={(sessionId) => updateTabSessionId(tab.id, sessionId)}
+            onTitleChange={(title) => updateTabTitle(tab.id, title)}
+          />
+        ))}
+      </div>
+      <ResizeHandle
+        position="bottom-left"
+        minWidth={MIN_WINDOW_WIDTH}
+        minHeight={MIN_WINDOW_HEIGHT}
+        maxWidth={MAX_WINDOW_WIDTH}
+        maxHeight={MAX_WINDOW_HEIGHT}
+        onResize={handleResize}
+      />
+      <ResizeHandle
+        position="bottom-right"
+        minWidth={MIN_WINDOW_WIDTH}
+        minHeight={MIN_WINDOW_HEIGHT}
+        maxWidth={MAX_WINDOW_WIDTH}
+        maxHeight={MAX_WINDOW_HEIGHT}
+        onResize={handleResize}
+      />
+      <SettingsPanel
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onSettingsChange={handleSettingsChange}
+      />
+      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+    </main>
+  );
+}
+
+export default function Home() {
   return (
     <ErrorBoundary>
-      <main className="main-container" style={containerStyle}>
-        <XTerminal opacity={opacity} fontSize={fontSize} />
-        <button
-          className="settings-button"
-          onClick={() => setSettingsOpen(true)}
-          title="Settings"
-        >
-          <GearIcon />
-        </button>
-        <ResizeHandle
-          position="bottom-left"
-          minWidth={MIN_WINDOW_WIDTH}
-          minHeight={MIN_WINDOW_HEIGHT}
-          maxWidth={MAX_WINDOW_WIDTH}
-          maxHeight={MAX_WINDOW_HEIGHT}
-          onResize={handleResize}
-        />
-        <ResizeHandle
-          position="bottom-right"
-          minWidth={MIN_WINDOW_WIDTH}
-          minHeight={MIN_WINDOW_HEIGHT}
-          maxWidth={MAX_WINDOW_WIDTH}
-          maxHeight={MAX_WINDOW_HEIGHT}
-          onResize={handleResize}
-        />
-        <SettingsPanel
-          isOpen={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-          onSettingsChange={handleSettingsChange}
-        />
-        {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
-        <ToastContainer toasts={toasts} onRemove={removeToast} />
-      </main>
+      <TabProvider>
+        <HomeContent />
+      </TabProvider>
     </ErrorBoundary>
   );
 }
