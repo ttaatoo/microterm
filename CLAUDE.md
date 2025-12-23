@@ -269,12 +269,19 @@ git push origin main
 ```bash
 # Build macOS application (generates .app and .dmg)
 npm run tauri build
+
+# Rename DMG to ASCII filename (required for Homebrew compatibility)
+cp "src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg" \
+   "src-tauri/target/release/bundle/dmg/microterm_<version>_aarch64.dmg"
 ```
 
 Build artifacts location:
 
-- `src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg` - DMG installer
+- `src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg` - Original DMG (non-ASCII name)
+- `src-tauri/target/release/bundle/dmg/microterm_<version>_aarch64.dmg` - Renamed DMG for release
 - `src-tauri/target/release/bundle/macos/µTerm.app` - Application bundle
+
+**⚠️ Important:** Always upload the renamed `microterm_<version>_aarch64.dmg` to GitHub Release (Homebrew requires ASCII-only URLs).
 
 ### 5. Create Git Tag
 
@@ -321,19 +328,52 @@ gh release create v<version> \
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )" \
-  "src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg"
+  "src-tauri/target/release/bundle/dmg/microterm_<version>_aarch64.dmg"
 ```
 
-**⚠️ Important: DMG installer must be uploaded!** Users need the DMG file to install the application.
+**⚠️ Important: Upload the renamed DMG (ASCII filename)!** Users need the DMG file to install the application.
 
-### 7. Verify Release
+### 7. Update Homebrew Tap
+
+Update the Homebrew cask to allow users to install via `brew install --cask microterm`.
+
+```bash
+# Calculate SHA256 of the renamed DMG (use the ASCII filename)
+shasum -a 256 src-tauri/target/release/bundle/dmg/microterm_<version>_aarch64.dmg
+```
+
+Edit `~/Github/homebrew-microterm/Casks/microterm.rb`:
+
+```ruby
+cask "microterm" do
+  version "<version>"
+  sha256 "<sha256_from_above>"
+  # ... rest unchanged
+end
+```
+
+Commit and push the update:
+
+```bash
+git -C ~/Github/homebrew-microterm add .
+git -C ~/Github/homebrew-microterm commit -m "feat: bump to v<version>"
+git -C ~/Github/homebrew-microterm push
+```
+
+**Homebrew tap repository:** https://github.com/ttaatoo/homebrew-microterm
+
+### 8. Verify Release
 
 ```bash
 # Confirm release assets are correct
 gh release view v<version> --json assets --jq '.assets[].name'
+
+# Test Homebrew installation (optional)
+brew update
+brew upgrade --cask microterm
 ```
 
-Expected output: `µTerm_<version>_aarch64.dmg`
+Expected output: `microterm_<version>_aarch64.dmg`
 
 ### Release Checklist
 
@@ -343,9 +383,11 @@ Confirm all steps are completed before releasing:
 - [ ] Update `CHANGELOG.md` (including comparison links at bottom)
 - [ ] Commit and push version update
 - [ ] Run `npm run tauri build` to build
+- [ ] **Rename DMG to ASCII filename** (`microterm_<version>_aarch64.dmg`)
 - [ ] Create git tag (with detailed release notes) and push
 - [ ] Create GitHub release
-- [ ] **Upload DMG installer to release**
+- [ ] **Upload renamed DMG** (ASCII filename required for Homebrew)
+- [ ] **Update Homebrew tap** (version + SHA256 in `homebrew-microterm`)
 - [ ] Verify release assets are correct
 
 ### Updating an Existing Release Tag
