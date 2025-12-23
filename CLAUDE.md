@@ -46,12 +46,14 @@ Frontend wrapper `src/lib/tauri.ts` provides typed functions with dynamic import
 ### Rust Backend (src-tauri/)
 
 **pty.rs** - PTY session management (the real terminal):
+
 - `PtyManager` - Manages PTY sessions with `portable-pty` crate
 - Creates real shell sessions (reads `$SHELL`, defaults to zsh)
 - Spawns reader thread per session, emits `pty-output` events to frontend
 - Session lifecycle: `create_pty_session` → `write_to_pty` / `resize_pty` → `close_pty_session`
 
 **lib.rs** - macOS window/tray behavior:
+
 - Uses `objc2`/`objc2-app-kit` for native macOS APIs (not `cocoa`)
 - `configure_panel_behavior` sets floating window level, space behavior
 - Global click monitor hides window on outside click
@@ -62,6 +64,7 @@ Frontend wrapper `src/lib/tauri.ts` provides typed functions with dynamic import
 ### Tauri v2 Capabilities
 
 Permissions in `src-tauri/capabilities/default.json`:
+
 - `core:event:allow-listen/emit` - PTY output streaming
 - `global-shortcut:*` - Keyboard shortcuts
 - `autostart:*` - Launch at login
@@ -94,10 +97,10 @@ npm run tauri dev
 
 ### File Specifications
 
-| File | Format | Dimensions | Purpose |
-|------|--------|------------|---------|
-| `docs/screenshot.svg` | Vector SVG | 760×620 viewBox | Source file, editable |
-| `docs/screenshot.png` | Raster PNG | 1520×1240 (2x Retina) | README display |
+| File                  | Format     | Dimensions            | Purpose               |
+| --------------------- | ---------- | --------------------- | --------------------- |
+| `docs/screenshot.svg` | Vector SVG | 760×620 viewBox       | Source file, editable |
+| `docs/screenshot.png` | Raster PNG | 1520×1240 (2x Retina) | README display        |
 
 ### Update Workflow
 
@@ -112,6 +115,7 @@ npm run tauri dev
 The SVG mockup includes:
 
 - **macOS Menubar** (y=0-24)
+
   - App name at x=32 should be `µTerm` (not Finder or other apps)
   - µTerm tray icon at x=562
 
@@ -143,22 +147,23 @@ This project follows the [Conventional Commits 1.0.0](https://www.conventionalco
 
 ### Type
 
-| Type | Description | Semantic Version |
-|------|-------------|------------------|
-| `feat` | New feature | MINOR |
-| `fix` | Bug fix | PATCH |
-| `docs` | Documentation changes | - |
-| `style` | Code formatting (no functional changes) | - |
-| `refactor` | Code refactoring (neither feat nor fix) | - |
-| `perf` | Performance improvement | - |
-| `test` | Add/modify tests | - |
-| `build` | Build system or external dependency changes | - |
-| `ci` | CI configuration changes | - |
-| `chore` | Other changes not modifying src or test | - |
+| Type       | Description                                 | Semantic Version |
+| ---------- | ------------------------------------------- | ---------------- |
+| `feat`     | New feature                                 | MINOR            |
+| `fix`      | Bug fix                                     | PATCH            |
+| `docs`     | Documentation changes                       | -                |
+| `style`    | Code formatting (no functional changes)     | -                |
+| `refactor` | Code refactoring (neither feat nor fix)     | -                |
+| `perf`     | Performance improvement                     | -                |
+| `test`     | Add/modify tests                            | -                |
+| `build`    | Build system or external dependency changes | -                |
+| `ci`       | CI configuration changes                    | -                |
+| `chore`    | Other changes not modifying src or test     | -                |
 
 ### Scope (Optional)
 
 Describes the affected part of the codebase, for example:
+
 - `feat(terminal): add command history navigation`
 - `fix(tauri): resolve window positioning issue`
 
@@ -167,11 +172,13 @@ Describes the affected part of the codebase, for example:
 Breaking changes correspond to MAJOR in semantic versioning. Two ways to mark them:
 
 **Option 1:** Add `!` after type/scope
+
 ```
 feat(api)!: change command output format
 ```
 
 **Option 2:** Declare in footer
+
 ```
 feat: redesign terminal output
 
@@ -235,12 +242,15 @@ Add the new version's changelog entry at the top of `CHANGELOG.md`, following th
 ## [x.y.z] - YYYY-MM-DD
 
 ### Added
+
 - New features...
 
 ### Changed
+
 - Changes...
 
 ### Fixed
+
 - Fixes...
 ```
 
@@ -262,6 +272,7 @@ npm run tauri build
 ```
 
 Build artifacts location:
+
 - `src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg` - DMG installer
 - `src-tauri/target/release/bundle/macos/µTerm.app` - Application bundle
 
