@@ -201,3 +201,27 @@ export async function isShortcutRegistered(shortcut: string): Promise<boolean> {
   const { isRegistered } = await import("@tauri-apps/plugin-global-shortcut");
   return isRegistered(shortcut);
 }
+
+// Register a local shortcut that only works when the app window is focused
+// Used for shortcuts like Ctrl+Tab that are intercepted by the webview
+export async function registerLocalShortcut(
+  shortcut: string,
+  onTrigger: () => void
+): Promise<() => Promise<void>> {
+  if (!isTauri()) {
+    console.warn("Local shortcuts only work in Tauri environment");
+    return async () => {};
+  }
+
+  const { register, unregister } = await import("@tauri-apps/plugin-global-shortcut");
+
+  await register(shortcut, async (event) => {
+    if (event.state === "Pressed") {
+      onTrigger();
+    }
+  });
+
+  return async () => {
+    await unregister(shortcut);
+  };
+}
