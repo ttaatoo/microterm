@@ -304,7 +304,7 @@ impl PtyManager {
 
         #[repr(C)]
         struct vnode_info_path {
-            _vip_vi: [u8; 152], // vnode_info structure (we don't need its contents)
+            _vip_vi: [u8; 152],       // vnode_info structure (we don't need its contents)
             vip_path: [c_char; 1024], // MAXPATHLEN
         }
 

@@ -337,9 +337,8 @@ fn calculate_window_position<R: tauri::Runtime>(
     }
 
     // Fall back to main screen if mouse screen not found
-    let screen_frame = target_screen_frame.or_else(|| {
-        NSScreen::mainScreen(mtm).map(|s| s.frame())
-    })?;
+    let screen_frame =
+        target_screen_frame.or_else(|| NSScreen::mainScreen(mtm).map(|s| s.frame()))?;
 
     // Get visible frame (excludes menubar and dock)
     // We need to find the screen again to get its visibleFrame
