@@ -16,7 +16,7 @@ use tauri::{
     tray::TrayIconEvent,
     Emitter, Listener, Manager, WebviewWindow,
 };
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[cfg(target_os = "macos")]
@@ -202,6 +202,9 @@ pub mod macos {
     /// This makes the window visible, activates the application (so it can receive
     /// keyboard input), and makes it the key window.
     ///
+    /// If `position` is provided, the window is moved to that position BEFORE
+    /// being shown, which prevents flicker when switching screens.
+    ///
     /// # Safety
     ///
     /// This function is unsafe because it dereferences a raw pointer.
@@ -213,9 +216,14 @@ pub mod macos {
     /// # Panics
     ///
     /// Panics if not called from the main thread (MainThreadMarker::new() fails).
-    pub unsafe fn show_window(ns_window: *mut AnyObject) {
+    pub unsafe fn show_window_at(ns_window: *mut AnyObject, position: Option<NSPoint>) {
         // SAFETY: Caller guarantees ns_window is valid
         let window: &NSWindow = unsafe { &*(ns_window as *const NSWindow) };
+
+        // Position window BEFORE showing to prevent flicker
+        if let Some(pos) = position {
+            window.setFrameOrigin(pos);
+        }
 
         // Show window
         window.orderFrontRegardless();
@@ -232,6 +240,16 @@ pub mod macos {
         window.makeKeyWindow();
 
         set_window_visible(true);
+    }
+
+    /// Show the window at its current position.
+    /// For showing at a specific position without flicker, use `show_window_at`.
+    ///
+    /// # Safety
+    ///
+    /// Same requirements as `show_window_at`.
+    pub unsafe fn show_window(ns_window: *mut AnyObject) {
+        show_window_at(ns_window, None);
     }
 
     /// Hide the window by ordering it out.
@@ -278,11 +296,179 @@ pub mod macos {
     }
 }
 
+/// Calculate the window position for the screen where the mouse cursor is located.
+/// Returns the position in NSWindow coordinates (origin at bottom-left).
+#[cfg(target_os = "macos")]
+fn calculate_window_position<R: tauri::Runtime>(
+    window: &WebviewWindow<R>,
+) -> Option<objc2_foundation::NSPoint> {
+    use objc2_app_kit::NSScreen;
+    use objc2_foundation::{MainThreadMarker, NSPoint};
+
+    let mtm = MainThreadMarker::new()?;
+
+    // Get mouse location (in screen coordinates, origin at bottom-left)
+    let mouse_location = objc2_app_kit::NSEvent::mouseLocation();
+    debug!(
+        "Mouse location: ({}, {})",
+        mouse_location.x, mouse_location.y
+    );
+
+    // Find the screen containing the mouse cursor
+    let screens = NSScreen::screens(mtm);
+    let mut target_screen_frame: Option<objc2_foundation::NSRect> = None;
+
+    for screen in screens.iter() {
+        let frame = screen.frame();
+        debug!(
+            "NSScreen frame: origin=({}, {}), size=({}, {})",
+            frame.origin.x, frame.origin.y, frame.size.width, frame.size.height
+        );
+        // Check if mouse is within this screen's bounds
+        if mouse_location.x >= frame.origin.x
+            && mouse_location.x < frame.origin.x + frame.size.width
+            && mouse_location.y >= frame.origin.y
+            && mouse_location.y < frame.origin.y + frame.size.height
+        {
+            debug!("Mouse is on this screen!");
+            target_screen_frame = Some(frame);
+            break;
+        }
+    }
+
+    // Fall back to main screen if mouse screen not found
+    let screen_frame = target_screen_frame.or_else(|| {
+        NSScreen::mainScreen(mtm).map(|s| s.frame())
+    })?;
+
+    // Get visible frame (excludes menubar and dock)
+    // We need to find the screen again to get its visibleFrame
+    let visible_frame = {
+        let mut vf = screen_frame;
+        for screen in screens.iter() {
+            let frame = screen.frame();
+            if (frame.origin.x - screen_frame.origin.x).abs() < 1.0
+                && (frame.origin.y - screen_frame.origin.y).abs() < 1.0
+            {
+                vf = screen.visibleFrame();
+                break;
+            }
+        }
+        vf
+    };
+
+    // Get window size (we need the current window size for centering)
+    let window_width = if let Ok(size) = window.outer_size() {
+        size.width as f64 / window.scale_factor().unwrap_or(1.0)
+    } else {
+        800.0 // fallback
+    };
+
+    // Calculate centered x position
+    let x = screen_frame.origin.x + (screen_frame.size.width - window_width) / 2.0;
+
+    // Calculate y position: top of visible area (just below menubar)
+    // In NSWindow coordinates, y increases upward, so the top of visible frame is:
+    // visible_frame.origin.y + visible_frame.size.height
+    // We want the window's top edge there, so subtract a small gap
+    let gap = 4.0;
+    let window_height = if let Ok(size) = window.outer_size() {
+        size.height as f64 / window.scale_factor().unwrap_or(1.0)
+    } else {
+        600.0 // fallback
+    };
+
+    // Window origin is at bottom-left, so:
+    // window_top = y + window_height
+    // We want window_top = visible_frame_top - gap
+    // So: y = visible_frame_top - gap - window_height
+    let visible_frame_top = visible_frame.origin.y + visible_frame.size.height;
+    let y = visible_frame_top - gap - window_height;
+
+    debug!("Calculated window position: ({}, {})", x, y);
+    Some(NSPoint::new(x, y))
+}
+
+/// Position the window on the screen where the mouse cursor is located.
+/// This version uses Tauri's API (may cause flicker if window is visible).
+#[allow(dead_code)]
 fn position_window<R: tauri::Runtime>(window: &WebviewWindow<R>) {
     #[cfg(target_os = "macos")]
     {
+        use objc2_app_kit::NSScreen;
+        use objc2_foundation::MainThreadMarker;
         use tauri::{PhysicalPosition, Position};
-        if let Some(monitor) = window.primary_monitor().ok().flatten() {
+
+        // Get the screen where the mouse cursor is located
+        // This ensures the window appears on the currently active screen
+        let monitor = if let Some(mtm) = MainThreadMarker::new() {
+            // Get mouse location
+            let mouse_location = objc2_app_kit::NSEvent::mouseLocation();
+            debug!(
+                "Mouse location: ({}, {})",
+                mouse_location.x, mouse_location.y
+            );
+
+            // Find the screen containing the mouse cursor
+            let screens = NSScreen::screens(mtm);
+            let mut target_screen: Option<tauri::Monitor> = None;
+            let mut found_ns_screen_frame: Option<objc2_foundation::NSRect> = None;
+
+            for screen in screens.iter() {
+                let frame = screen.frame();
+                debug!(
+                    "NSScreen frame: origin=({}, {}), size=({}, {})",
+                    frame.origin.x, frame.origin.y, frame.size.width, frame.size.height
+                );
+                // Check if mouse is within this screen's bounds
+                if mouse_location.x >= frame.origin.x
+                    && mouse_location.x < frame.origin.x + frame.size.width
+                    && mouse_location.y >= frame.origin.y
+                    && mouse_location.y < frame.origin.y + frame.size.height
+                {
+                    debug!("Mouse is on this screen!");
+                    found_ns_screen_frame = Some(frame);
+                    break;
+                }
+            }
+
+            // Now find matching Tauri monitor
+            if let Some(ns_frame) = found_ns_screen_frame {
+                if let Ok(monitors) = window.available_monitors() {
+                    for monitor in monitors {
+                        let mon_pos = monitor.position();
+                        let mon_size = monitor.size();
+                        let scale = monitor.scale_factor();
+                        debug!(
+                            "Tauri monitor: pos=({}, {}), size=({}, {}), scale={}",
+                            mon_pos.x, mon_pos.y, mon_size.width, mon_size.height, scale
+                        );
+
+                        // NSScreen uses points (logical), Tauri uses physical pixels
+                        // Also, NSScreen y=0 is at bottom, Tauri y=0 is at top
+                        let ns_width_physical = ns_frame.size.width * scale;
+                        let ns_height_physical = ns_frame.size.height * scale;
+
+                        // Match by size (more reliable than position due to coordinate differences)
+                        if (mon_size.width as f64 - ns_width_physical).abs() < 2.0
+                            && (mon_size.height as f64 - ns_height_physical).abs() < 2.0
+                        {
+                            debug!("Found matching Tauri monitor!");
+                            target_screen = Some(monitor);
+                            break;
+                        }
+                    }
+                }
+            }
+            target_screen
+        } else {
+            None
+        };
+
+        // Fall back to primary monitor if we couldn't find the cursor's screen
+        let monitor = monitor.or_else(|| window.primary_monitor().ok().flatten());
+
+        if let Some(monitor) = monitor {
             let screen_size = *monitor.size();
             let screen_position = monitor.position();
             let screen_width = screen_size.width as f64;
@@ -316,9 +502,9 @@ fn toggle_window(window: &WebviewWindow) {
             if macos::is_ns_window_visible(ns_window) {
                 macos::hide_window(ns_window);
             } else {
-                // Position window before showing
-                position_window(window);
-                macos::show_window(ns_window);
+                // Calculate position and show window atomically to prevent flicker
+                let position = calculate_window_position(window);
+                macos::show_window_at(ns_window, position);
             }
         }
     }
@@ -375,6 +561,7 @@ pub fn run() {
             pty_commands::write_to_pty,
             pty_commands::resize_pty,
             pty_commands::close_pty_session,
+            pty_commands::get_pty_cwd,
         ])
         .setup(|app| {
             let window = app
@@ -397,7 +584,7 @@ pub fn run() {
                 }
             }
 
-            // Create quit menu for tray icon (shown on double-click)
+            // Create quit menu for tray icon (shown on right-click)
             let quit_item = MenuItem::with_id(app, "quit", "Quit µTerm", true, None::<&str>)?;
             let tray_menu = Menu::with_items(app, &[&quit_item])?;
 
@@ -414,23 +601,15 @@ pub fn run() {
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
                 .on_tray_icon_event(move |_tray, event| {
-                    match event {
-                        // Single click: toggle window
-                        TrayIconEvent::Click {
-                            button: tauri::tray::MouseButton::Left,
-                            button_state: tauri::tray::MouseButtonState::Up,
-                            ..
-                        } => {
-                            toggle_window(&window_for_tray);
-                        }
-                        // Double click: show menu (handled by Tauri's built-in menu)
-                        TrayIconEvent::DoubleClick {
-                            button: tauri::tray::MouseButton::Left,
-                            ..
-                        } => {
-                            // Menu is shown automatically when set
-                        }
-                        _ => {}
+                    // Left click: toggle window
+                    // Right click: menu is shown automatically by Tauri
+                    if let TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        button_state: tauri::tray::MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        toggle_window(&window_for_tray);
                     }
                 })
                 .on_menu_event(|app, event| {
@@ -489,8 +668,9 @@ pub fn run() {
                         if let Ok(ns_window) = window.ns_window() {
                             let ns_window = ns_window as *mut objc2::runtime::AnyObject;
                             unsafe {
-                                position_window(&window);
-                                macos::show_window(ns_window);
+                                // Calculate position and show atomically to prevent flicker
+                                let position = calculate_window_position(&window);
+                                macos::show_window_at(ns_window, position);
                             }
                         }
                     }
