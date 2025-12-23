@@ -38,3 +38,11 @@ pub async fn close_pty_session(
 ) -> Result<(), String> {
     pty_manager.close_session(&session_id)
 }
+
+#[command]
+pub async fn get_pty_cwd(
+    pty_manager: State<'_, Arc<PtyManager>>,
+    session_id: String,
+) -> Result<Option<String>, String> {
+    pty_manager.get_session_cwd(&session_id)
+}

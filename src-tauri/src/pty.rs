@@ -52,6 +52,7 @@ struct PtySession {
     pair: PtyPair,
     writer: Box<dyn Write + Send>,
     child: Box<dyn Child + Send + Sync>,
+    child_pid: Option<u32>,
     reader_thread: Option<JoinHandle<()>>,
     shutdown_flag: Arc<AtomicBool>,
 }
@@ -120,6 +121,9 @@ impl PtyManager {
             .spawn_command(cmd)
             .map_err(|e| format!("Failed to spawn shell: {}", e))?;
 
+        // Get the child process ID for CWD tracking
+        let child_pid = child.process_id();
+
         // Get the writer for sending input to the PTY
         let writer = pair
             .master
@@ -140,6 +144,7 @@ impl PtyManager {
             pair,
             writer,
             child,
+            child_pid,
             reader_thread: None,
             shutdown_flag,
         };
@@ -273,6 +278,97 @@ impl PtyManager {
             .map_err(|e| format!("Failed to resize PTY: {}", e))?;
 
         Ok(())
+    }
+
+    /// Get the current working directory of a PTY session's shell process
+    #[cfg(target_os = "macos")]
+    pub fn get_session_cwd(&self, session_id: &str) -> Result<Option<String>, String> {
+        let sessions = self.sessions.lock();
+        let session = sessions
+            .get(session_id)
+            .ok_or_else(|| format!("Session not found: {}", session_id))?;
+
+        let session_guard = session.lock();
+        let pid = match session_guard.child_pid {
+            Some(pid) => pid,
+            None => return Ok(None),
+        };
+
+        // Use libproc to get the current working directory
+        use std::ffi::CStr;
+        use std::mem::MaybeUninit;
+        use std::os::raw::{c_char, c_int};
+
+        // Constants from sys/proc_info.h
+        const PROC_PIDVNODEPATHINFO: c_int = 9;
+
+        #[repr(C)]
+        struct vnode_info_path {
+            _vip_vi: [u8; 152], // vnode_info structure (we don't need its contents)
+            vip_path: [c_char; 1024], // MAXPATHLEN
+        }
+
+        #[repr(C)]
+        struct proc_vnodepathinfo {
+            pvi_cdir: vnode_info_path,
+            pvi_rdir: vnode_info_path,
+        }
+
+        extern "C" {
+            fn proc_pidinfo(
+                pid: c_int,
+                flavor: c_int,
+                arg: u64,
+                buffer: *mut std::ffi::c_void,
+                buffersize: c_int,
+            ) -> c_int;
+        }
+
+        let mut info: MaybeUninit<proc_vnodepathinfo> = MaybeUninit::uninit();
+        let info_size = std::mem::size_of::<proc_vnodepathinfo>() as c_int;
+
+        let ret = unsafe {
+            proc_pidinfo(
+                pid as c_int,
+                PROC_PIDVNODEPATHINFO,
+                0,
+                info.as_mut_ptr() as *mut std::ffi::c_void,
+                info_size,
+            )
+        };
+
+        if ret <= 0 {
+            return Ok(None);
+        }
+
+        let info = unsafe { info.assume_init() };
+        let cwd = unsafe { CStr::from_ptr(info.pvi_cdir.vip_path.as_ptr()) };
+
+        match cwd.to_str() {
+            Ok(s) if !s.is_empty() => Ok(Some(s.to_string())),
+            _ => Ok(None),
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    pub fn get_session_cwd(&self, session_id: &str) -> Result<Option<String>, String> {
+        // On non-macOS platforms, try to read /proc/<pid>/cwd
+        let sessions = self.sessions.lock();
+        let session = sessions
+            .get(session_id)
+            .ok_or_else(|| format!("Session not found: {}", session_id))?;
+
+        let session_guard = session.lock();
+        let pid = match session_guard.child_pid {
+            Some(pid) => pid,
+            None => return Ok(None),
+        };
+
+        let cwd_path = format!("/proc/{}/cwd", pid);
+        match std::fs::read_link(&cwd_path) {
+            Ok(path) => Ok(Some(path.to_string_lossy().to_string())),
+            Err(_) => Ok(None),
+        }
     }
 
     pub fn close_session(&self, session_id: &str) -> Result<(), String> {
