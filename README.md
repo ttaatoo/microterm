@@ -12,7 +12,7 @@ A micro terminal that lives in your macOS menubar. Lightweight, fast, always one
 Built with **Rust**, **Tauri 2.0**, and **Next.js 14**.
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="µTerm Screenshot" width="800">
+  <img src="docs/screenshot.png" alt="µTerm Screenshot" width="760">
 </p>
 
 ## Features
@@ -20,11 +20,14 @@ Built with **Rust**, **Tauri 2.0**, and **Next.js 14**.
 - 🎯 **Menubar Access** - Always one click away from your terminal
 - ⚡ **Lightning Fast** - Native Rust backend with minimal memory footprint
 - 🖥️ **Full PTY Support** - Real terminal emulation with xterm.js
-- 🎨 **Beautiful UI** - One Dark Pro Vivid theme with adjustable transparency
+- 📑 **Multi-Tab Support** - Open multiple terminal sessions with keyboard shortcuts
+- 🖥️ **Multi-Monitor** - Window appears on the screen where your cursor is
+- 📂 **Smart Tab Titles** - Tabs show current working directory (like Warp)
+- 🎨 **Beautiful UI** - One Dark Pro theme with adjustable transparency
 - ⚙️ **Customizable** - Adjust opacity, font size, and window size
-- 📜 **Command History** - Navigate with up/down arrows
 - 🔗 **Clickable Links** - URLs are automatically detected and clickable
 - 🪟 **Smart Window** - Click outside to dismiss, resizable, works across all spaces
+- ⌨️ **Global Shortcut** - Configurable hotkey to toggle terminal (default: ⌘⇧T)
 
 ## Installation
 
@@ -76,12 +79,24 @@ npm run lint
 
 ## Usage
 
-1. **Open** - Click the menubar icon to open the terminal
+1. **Open** - Click the menubar icon or press `⌘⇧T` (configurable)
 2. **Type** - Enter commands and press Enter to execute
 3. **Navigate** - Use Up/Down arrows to browse command history
-4. **Settings** - Click the gear icon (⚙) to adjust opacity and font size
-5. **Resize** - Drag the bottom-right corner to resize the window
-6. **Close** - Click outside the window or click the icon again
+4. **Settings** - Click the gear icon (⚙) to adjust opacity, font size, and shortcuts
+5. **Resize** - Drag the bottom corners to resize the window
+6. **Close** - Click outside the window, press `ESC` twice, or click the icon again
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+| -------- | ------ |
+| `⌘⇧T` | Toggle terminal window (global, configurable) |
+| `⌘T` | New tab |
+| `⌘W` | Close current tab |
+| `⌘1-9` | Switch to tab 1-9 |
+| `⌘[` | Previous tab |
+| `⌘]` | Next tab |
+| `ESC ESC` | Hide window (double-tap) |
 
 ## Tech Stack
 
@@ -102,16 +117,21 @@ microterm/
 │   ├── app/               # App Router pages
 │   ├── components/        # React components
 │   │   ├── XTerminal.tsx  # Terminal UI with xterm.js
+│   │   ├── TabBar.tsx     # Tab bar with multi-tab support
 │   │   ├── SettingsPanel.tsx  # Settings overlay
 │   │   ├── ResizeHandle.tsx   # Window resize control
 │   │   └── ErrorBoundary.tsx  # Error handling
+│   ├── contexts/          # React contexts
+│   │   └── TabContext.tsx # Tab state management
+│   ├── hooks/             # Custom hooks
+│   │   └── useTabShortcuts.ts # Keyboard shortcuts
 │   ├── lib/               # Utilities & settings
 │   └── styles/            # CSS styles
 ├── src-tauri/             # Rust backend
 │   ├── src/
-│   │   ├── lib.rs         # Window & tray behavior
+│   │   ├── lib.rs         # Window & tray behavior, multi-monitor
 │   │   ├── commands.rs    # Shell command execution
-│   │   ├── pty.rs         # PTY session management
+│   │   ├── pty.rs         # PTY session management, CWD tracking
 │   │   └── pty_commands.rs
 │   └── capabilities/      # Tauri permissions
 ├── .github/workflows/     # CI/CD

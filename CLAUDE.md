@@ -15,6 +15,17 @@ npm run tauri dev     # Starts both Next.js dev server and Tauri
 npm run build         # Build Next.js frontend (outputs to ./out/)
 npm run tauri build   # Build final macOS application
 
+# Tests
+npm run test          # Watch mode (Vitest)
+npm run test:run      # Single run
+npm run test:coverage # With coverage report
+
+# Run a single test file
+npm run test:run src/lib/settings.test.ts
+
+# Rust tests
+cd src-tauri && cargo test
+
 # Lint
 npm run lint
 ```
@@ -25,44 +36,46 @@ macOS menubar terminal application built with **Tauri 2.0** (Rust backend) and *
 
 ### Frontend-Backend Communication
 
-Tauri IPC system connects React frontend and Rust backend:
+Tauri IPC connects React frontend and Rust backend via two patterns:
 
-- **Tauri Commands**: `src-tauri/src/commands.rs` → invoked via `@tauri-apps/api/core`
-- **Event Streaming**: Real-time output uses Tauri events (`command-stdout`, `command-stderr`, `command-complete`)
-- **Frontend Wrapper**: `src/lib/tauri.ts` provides typed wrappers with dynamic imports for Tauri API
+1. **Commands** (request-response): Frontend calls `invoke()` → Rust handles in `commands.rs` or `pty_commands.rs`
+2. **Events** (streaming): Rust emits `pty-output`/`pty-exit` → Frontend listens via `listen()`
+
+Frontend wrapper `src/lib/tauri.ts` provides typed functions with dynamic imports (checks `window.__TAURI__` for SSR safety).
 
 ### Rust Backend (src-tauri/)
 
-**commands.rs** - Three main commands:
+**pty.rs** - PTY session management (the real terminal):
+- `PtyManager` - Manages PTY sessions with `portable-pty` crate
+- Creates real shell sessions (reads `$SHELL`, defaults to zsh)
+- Spawns reader thread per session, emits `pty-output` events to frontend
+- Session lifecycle: `create_pty_session` → `write_to_pty` / `resize_pty` → `close_pty_session`
 
-- `execute_command` - Synchronous execution, returns full output
-- `execute_command_stream` - Async streaming with real-time output via events
-- `complete_command` - Tab completion by scanning PATH
+**lib.rs** - macOS window/tray behavior:
+- Uses `objc2`/`objc2-app-kit` for native macOS APIs (not `cocoa`)
+- `configure_panel_behavior` sets floating window level, space behavior
+- Global click monitor hides window on outside click
+- `MouseButtonState::Up` for tray click (matches native macOS behavior)
 
-**lib.rs** - Window and tray behavior:
-
-- Uses native macOS APIs (`cocoa`, `objc`, `block` crates) for panel behavior
-- `MouseButtonState::Up` for tray click (critical: matches native macOS behavior)
-- Global click monitor (`NSEvent addGlobalMonitorForEventsMatchingMask`) to hide window on outside click
-- Window level set to floating (`NSFloatingWindowLevel`)
+**commands.rs** - Legacy simple command execution (less used now that PTY exists)
 
 ### Tauri v2 Capabilities
 
-Permissions defined in `src-tauri/capabilities/default.json`:
-
-- `core:event:allow-listen` and `core:event:allow-emit` required for frontend event handling
-- `shell:allow-open` and `shell:allow-execute` for command execution
-
-### Next.js Configuration
-
-- **Development**: Standard Next.js dev server (no static export)
-- **Production**: Static export mode, outputs to `./out/` directory
-- Tauri loads from `devUrl: http://localhost:3000` in dev, `frontendDist: ../out` in production
+Permissions in `src-tauri/capabilities/default.json`:
+- `core:event:allow-listen/emit` - PTY output streaming
+- `global-shortcut:*` - Keyboard shortcuts
+- `autostart:*` - Launch at login
 
 ### Key Frontend Components
 
-- `src/components/Terminal.tsx` - Terminal UI with command history, streaming output, tab completion
-- `src/lib/tauri.ts` - Typed IPC wrapper (checks `window.__TAURI__` before importing Tauri APIs)
+- `src/components/XTerminal.tsx` - Main terminal UI with xterm.js, PTY integration, double-ESC to hide
+- `src/lib/tauri.ts` - Typed IPC wrapper with SSR-safe dynamic imports
+- `src/lib/settings.ts` - Persisted settings (opacity, font size) in localStorage
+
+### Next.js Configuration
+
+- **Dev**: `devUrl: http://localhost:3000` in tauri.conf.json
+- **Prod**: Static export to `./out/`, loaded via `frontendDist: ../out`
 
 ## Troubleshooting
 
@@ -73,7 +86,46 @@ rm -rf .next out node_modules/.cache
 npm run tauri dev
 ```
 
-**If port 3000 is in use:** Next.js auto-selects next available port, but Tauri expects 3000. Kill other processes or update `devUrl` in `tauri.conf.json`.
+**If port 3000 is in use:** Kill other processes or update `devUrl` in `src-tauri/tauri.conf.json`.
+
+## Screenshot Maintenance
+
+**Every UI change requires updating both `docs/screenshot.svg` and `docs/screenshot.png`.**
+
+### File Specifications
+
+| File | Format | Dimensions | Purpose |
+|------|--------|------------|---------|
+| `docs/screenshot.svg` | Vector SVG | 760×620 viewBox | Source file, editable |
+| `docs/screenshot.png` | Raster PNG | 1520×1240 (2x Retina) | README display |
+
+### Update Workflow
+
+1. **Edit the SVG** - Modify `docs/screenshot.svg` to reflect UI changes
+2. **Regenerate PNG** - Run conversion command:
+   ```bash
+   rsvg-convert -w 1520 -h 1240 docs/screenshot.svg -o docs/screenshot.png
+   ```
+
+### SVG Layout Reference
+
+The SVG mockup includes:
+
+- **macOS Menubar** (y=0-24)
+  - App name at x=32 should be `µTerm` (not Finder or other apps)
+  - µTerm tray icon at x=562
+
+- **Terminal Window** (translated to x=30, y=44)
+  - **Tab Bar** (y=0-40): tabs-container on left, "+" button and settings icon on right
+    - "+" button: `translate(628, 6)` - right side, before settings
+    - Settings gear: `translate(664, 11)` - rightmost
+  - **Terminal Content** (y=56+): shell prompts, command output
+
+### Important Notes
+
+- Always verify menubar shows "µTerm" as the active app
+- Tab bar layout: scrollable tabs (left), "+" button (right), settings (rightmost)
+- PNG uses 2x scale for Retina display quality
 
 ## Git Commit Convention
 

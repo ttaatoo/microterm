@@ -78,18 +78,57 @@
   </g>
 
   <!-- Date and Time (Sonoma format) -->
-  <text x="668" y="16" font-family="-apple-system, SF Pro Text, system-ui" font-size="12" fill="#fff" opacity="0.85">Sun Dec 22  9:41 AM</text>
+  <text x="668" y="16" font-family="-apple-system, SF Pro Text, system-ui" font-size="12" fill="#fff" opacity="0.85">Mon Dec 23  1:15 PM</text>
 
   <!-- Terminal Window (centered, positioned below menubar) -->
   <g transform="translate(30, 44)" filter="url(#windowShadow)">
     <!-- Window Background with rounded corners -->
-    <rect width="700" height="550" rx="10" fill="rgba(40,44,52,0.95)"/>
+    <rect width="700" height="550" rx="10" fill="rgba(0,0,0,0.95)"/>
 
-    <!-- Window border glow -->
-    <rect width="700" height="550" rx="10" fill="none" stroke="rgba(97,175,239,0.3)" stroke-width="1"/>
+    <!-- Window border -->
+    <rect width="700" height="550" rx="10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
 
-    <!-- Terminal Content -->
-    <g transform="translate(16, 16)">
+    <!-- Tab Bar Background -->
+    <rect x="0" y="0" width="700" height="40" rx="10" fill="#101010"/>
+    <rect x="0" y="10" width="700" height="30" fill="#101010"/>
+    <rect x="0" y="39" width="700" height="1" fill="rgba(255,255,255,0.08)"/>
+
+    <!-- Tab 1: Active Tab -->
+    <g transform="translate(8, 6)">
+      <rect width="130" height="28" rx="6" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <text x="14" y="18" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="rgba(255,255,255,0.9)">1: microterm</text>
+      <!-- Close button -->
+      <text x="110" y="18" font-family="-apple-system, system-ui" font-size="14" fill="rgba(255,255,255,0.5)">×</text>
+    </g>
+
+    <!-- Tab 2: Inactive Tab -->
+    <g transform="translate(146, 6)">
+      <rect width="100" height="28" rx="6" fill="transparent" stroke="transparent" stroke-width="1"/>
+      <text x="14" y="18" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="rgba(255,255,255,0.5)">2: Github</text>
+    </g>
+
+    <!-- Tab 3: Inactive Tab -->
+    <g transform="translate(254, 6)">
+      <rect width="80" height="28" rx="6" fill="transparent" stroke="transparent" stroke-width="1"/>
+      <text x="14" y="18" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="rgba(255,255,255,0.5)">3: tmp</text>
+    </g>
+
+    <!-- Add Tab Button (+) - right side, next to settings -->
+    <g transform="translate(628, 6)">
+      <rect width="28" height="28" rx="6" fill="transparent"/>
+      <text x="9" y="20" font-family="-apple-system, system-ui" font-size="18" fill="rgba(255,255,255,0.4)">+</text>
+    </g>
+
+    <!-- Settings Gear Icon (right side of tab bar) -->
+    <g transform="translate(664, 11)" opacity="0.3">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    </g>
+
+    <!-- Terminal Content (offset by tab bar height) -->
+    <g transform="translate(16, 56)">
       <!-- Prompt Line 1 -->
       <text y="0" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">~/Projects/microterm</text>
       <text y="0" x="175" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">on</text>
@@ -110,7 +149,7 @@
       <text y="115" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">  (use "git add &lt;file&gt;..." to update what will be committed)</text>
 
       <text y="145" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#ef596f">        modified:</text>
-      <text y="145" x="105" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#ef596f">src/components/Terminal.tsx</text>
+      <text y="145" x="105" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#ef596f">src/components/XTerminal.tsx</text>
       <text y="165" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#ef596f">        modified:</text>
       <text y="165" x="105" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#ef596f">src-tauri/src/lib.rs</text>
 
@@ -125,8 +164,8 @@
       <text y="225" x="18" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">npm run build</text>
 
       <!-- Build output -->
-      <text y="255" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">> microterm@1.0.0 build</text>
-      <text y="275" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">> next build</text>
+      <text y="255" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">&gt; microterm@1.0.0 build</text>
+      <text y="275" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">&gt; next build</text>
 
       <text y="305" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">   ▲ Next.js 14.2.0</text>
       <text y="325" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">   - Environments: .env</text>
@@ -139,29 +178,17 @@
       <text y="395" x="32" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Linting and checking validity of types</text>
       <text y="415" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">   ✓</text>
       <text y="415" x="32" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Collecting page data</text>
-      <text y="435" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">   ✓</text>
-      <text y="435" x="32" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Generating static pages (3/3)</text>
-      <text y="455" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">   ✓</text>
-      <text y="455" x="32" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#abb2bf">Finalizing page optimization</text>
 
       <!-- Current prompt with cursor -->
-      <text y="495" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">~/Projects/microterm</text>
-      <text y="495" x="175" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">on</text>
-      <text y="495" x="195" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#d55fde"> main</text>
+      <text y="455" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#89ca78">~/Projects/microterm</text>
+      <text y="455" x="175" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#5c6370">on</text>
+      <text y="455" x="195" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#d55fde"> main</text>
 
-      <text y="515" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#61afef">❯</text>
+      <text y="475" font-family="SF Mono, Monaco, Menlo" font-size="13" fill="#61afef">❯</text>
       <!-- Blinking cursor -->
-      <rect x="18" y="503" width="8" height="15" fill="#528bff" opacity="0.9">
+      <rect x="18" y="463" width="8" height="15" fill="#528bff" opacity="0.9">
         <animate attributeName="opacity" values="0.9;0;0.9" dur="1s" repeatCount="indefinite"/>
       </rect>
-    </g>
-
-    <!-- Settings gear icon (top right) - Feather style -->
-    <g transform="translate(664, 14)" opacity="0.3">
-      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      </svg>
     </g>
   </g>
 
