@@ -6,33 +6,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Development - single command (recommended)
-npm run tauri dev     # Starts both Next.js dev server and Tauri
+bun run tauri dev     # Starts both Vite dev server and Tauri
 
 # Production build
-npm run build         # Build Next.js frontend (outputs to ./out/)
-npm run tauri build   # Build final macOS application
+bun run build         # Build Vite frontend (outputs to ./dist/)
+bun run tauri build   # Build final macOS application
 
 # Tests
-npm run test          # Watch mode (Vitest)
-npm run test:run      # Single run
-npm run test:coverage # With coverage report
+bun run test          # Watch mode (Vitest)
+bun run test:run      # Single run
+bun run test:coverage # With coverage report
 
 # Run a single test file
-npm run test:run src/lib/settings.test.ts
+bun run test:run src/lib/settings.test.ts
 
 # Rust tests
 cd src-tauri && cargo test
 
 # Lint
-npm run lint
+bun run lint
 ```
 
 ## Architecture Overview
 
-macOS menubar terminal application built with **Tauri 2.0** (Rust backend) and **Next.js 14** (React frontend).
+macOS menubar terminal application built with **Tauri 2.0** (Rust backend) and **Vite + React** (frontend).
 
 ### Frontend-Backend Communication
 
@@ -41,7 +41,7 @@ Tauri IPC connects React frontend and Rust backend via two patterns:
 1. **Commands** (request-response): Frontend calls `invoke()` → Rust handles in `commands.rs` or `pty_commands.rs`
 2. **Events** (streaming): Rust emits `pty-output`/`pty-exit` → Frontend listens via `listen()`
 
-Frontend wrapper `src/lib/tauri.ts` provides typed functions with dynamic imports (checks `window.__TAURI__` for SSR safety).
+Frontend wrapper `src/lib/tauri.ts` provides typed functions with dynamic imports (checks `window.__TAURI__` for browser safety).
 
 ### Rust Backend (src-tauri/)
 
@@ -72,21 +72,21 @@ Permissions in `src-tauri/capabilities/default.json`:
 ### Key Frontend Components
 
 - `src/components/XTerminal.tsx` - Main terminal UI with xterm.js, PTY integration, double-ESC to hide
-- `src/lib/tauri.ts` - Typed IPC wrapper with SSR-safe dynamic imports
+- `src/lib/tauri.ts` - Typed IPC wrapper with dynamic imports
 - `src/lib/settings.ts` - Persisted settings (opacity, font size) in localStorage
 
-### Next.js Configuration
+### Vite Configuration
 
 - **Dev**: `devUrl: http://localhost:3000` in tauri.conf.json
-- **Prod**: Static export to `./out/`, loaded via `frontendDist: ../out`
+- **Prod**: Static build to `./dist/`, loaded via `frontendDist: ../dist`
 
 ## Troubleshooting
 
-**If Next.js dev server has cache issues:**
+**If Vite dev server has cache issues:**
 
 ```bash
-rm -rf .next out node_modules/.cache
-npm run tauri dev
+rm -rf dist node_modules/.vite
+bun run tauri dev
 ```
 
 **If port 3000 is in use:** Kill other processes or update `devUrl` in `src-tauri/tauri.conf.json`.
@@ -268,7 +268,7 @@ git push origin main
 
 ```bash
 # Build macOS application (generates .app and .dmg)
-npm run tauri build
+bun run tauri build
 
 # Rename DMG to ASCII filename (required for Homebrew compatibility)
 cp "src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg" \
@@ -382,7 +382,7 @@ Confirm all steps are completed before releasing:
 - [ ] Update `tauri.conf.json` version number
 - [ ] Update `CHANGELOG.md` (including comparison links at bottom)
 - [ ] Commit and push version update
-- [ ] Run `npm run tauri build` to build
+- [ ] Run `bun run tauri build` to build
 - [ ] **Rename DMG to ASCII filename** (`microterm_<version>_aarch64.dmg`)
 - [ ] Create git tag (with detailed release notes) and push
 - [ ] Create GitHub release

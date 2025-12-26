@@ -7,7 +7,7 @@ Thank you for your interest in contributing to µTerm! This document provides gu
 ### Prerequisites
 
 - **Rust** (latest stable) - Install from [rustup.rs](https://rustup.rs/)
-- **Node.js 18+** and npm
+- **Bun** (latest) - Install from [bun.sh](https://bun.sh/)
 - **macOS 10.13+** (for development and testing)
 
 ### Getting Started
@@ -21,21 +21,22 @@ Thank you for your interest in contributing to µTerm! This document provides gu
 
 3. Install dependencies:
    ```bash
-   npm install
+   bun install
    ```
 
 4. Run in development mode:
    ```bash
-   npm run tauri dev
+   bun run tauri dev
    ```
 
 ## Project Structure
 
 ```
 microterm/
-├── src/                 # Next.js frontend (TypeScript/React)
-│   ├── app/            # Next.js App Router pages
+├── src/                 # Vite + React frontend (TypeScript)
 │   ├── components/     # React components
+│   ├── contexts/       # React contexts
+│   ├── hooks/          # Custom hooks
 │   ├── lib/            # Utility functions
 │   └── styles/         # CSS styles
 ├── src-tauri/          # Rust backend
@@ -49,7 +50,7 @@ microterm/
 
 - Use functional components with hooks
 - Follow the existing code patterns
-- Run `npm run lint` before committing
+- Run `bun run lint` before committing
 
 ### Rust
 
