@@ -1,5 +1,3 @@
-"use client";
-
 // Settings keys for localStorage
 const SETTINGS_KEY = "microterm-settings";
 
@@ -49,10 +47,6 @@ const defaultSettings: Settings = {
 };
 
 export function loadSettings(): Settings {
-  if (typeof window === "undefined") {
-    return defaultSettings;
-  }
-
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
@@ -76,10 +70,6 @@ export function loadSettings(): Settings {
 }
 
 export function saveSettings(settings: Settings): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch (error) {

@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type ResizePosition = "bottom-left" | "bottom-right";
