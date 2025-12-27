@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { TabProvider, useTabContext, type Tab } from "./TabContext";
 import type { ReactNode } from "react";
@@ -345,6 +345,3 @@ describe("TabContext", () => {
     });
   });
 });
-
-// Import vi for mocking
-import { vi } from "vitest";
