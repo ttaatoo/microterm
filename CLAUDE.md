@@ -280,6 +280,17 @@ git -C ~/Github/homebrew-microterm push
 
 **Homebrew tap repository:** https://github.com/ttaatoo/homebrew-microterm
 
+### GitHub Actions Permissions (Required Setup)
+
+For Release Please to create PRs automatically, enable this permission in GitHub:
+
+1. Go to **Settings** → **Actions** → **General**
+2. Scroll to **Workflow permissions**
+3. Check **Allow GitHub Actions to create and approve pull requests**
+4. Click **Save**
+
+URL: `https://github.com/ttaatoo/microterm/settings/actions`
+
 ### Configuration Files
 
 - `release-please-config.json` - Release Please configuration
