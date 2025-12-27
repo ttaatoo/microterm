@@ -44,10 +44,21 @@ export function useTerminalSearch({ getActiveTerminal, disabled = false }: UseTe
     setSearchOpen(true);
   }, []);
 
+  // Close search when disabled
+  useEffect(() => {
+    if (disabled && searchOpen) {
+      setSearchOpen(false);
+      const terminal = getActiveTerminal();
+      terminal?.clearSearch();
+    }
+  }, [disabled, searchOpen, getActiveTerminal]);
+
   // Listen for Cmd+F to open search
   useEffect(() => {
+    if (disabled) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "f" && !disabled) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         e.preventDefault();
         setSearchOpen(true);
       }
