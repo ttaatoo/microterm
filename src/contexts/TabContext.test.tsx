@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { TabProvider, useTabContext, type Tab } from "./TabContext";
+import { TabProvider, useTabContext } from "./TabContext";
 import type { ReactNode } from "react";
 
 // Wrapper for testing hooks with context

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import SettingsPanel from "./SettingsPanel";
 import { MIN_OPACITY, MAX_OPACITY, MIN_FONT_SIZE, MAX_FONT_SIZE } from "@/lib/settings";
 
