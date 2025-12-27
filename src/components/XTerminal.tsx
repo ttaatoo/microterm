@@ -1,31 +1,20 @@
-"use client";
-
+import {
+  PTY_RESTART_DELAY_MS,
+  WINDOW_FOCUS_DELAY_MS,
+  MAX_PTY_RETRIES,
+  PTY_RETRY_DELAY_MS,
+  WINDOW_VISIBLE_FOCUS_DELAY_MS,
+  DOUBLE_ESC_INTERVAL_MS,
+  ESC_KEY,
+  CWD_POLL_INTERVAL_MS,
+} from "@/lib/constants";
 import { loadSettings } from "@/lib/settings";
 import { FitAddon } from "@xterm/addon-fit";
+import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { useCallback, useEffect, useRef } from "react";
-
-// Timing constants
-/** Delay before restarting PTY session after process exit (ms) */
-const PTY_RESTART_DELAY_MS = 1000;
-/** Delay before focusing terminal after window focus - allows window to fully render (ms) */
-const WINDOW_FOCUS_DELAY_MS = 50;
-/** Maximum retry attempts for PTY session creation */
-const MAX_PTY_RETRIES = 3;
-/** Delay between PTY retry attempts (ms) */
-const PTY_RETRY_DELAY_MS = 500;
-/** Delay before focusing terminal after window becomes visible (ms) */
-const WINDOW_VISIBLE_FOCUS_DELAY_MS = 100;
-/** Maximum interval between double-ESC presses to trigger hide window (ms) */
-const DOUBLE_ESC_INTERVAL_MS = 300;
-
-// Key codes
-const ESC_KEY = "\x1b";
-
-/** Interval for polling current working directory (ms) */
-const CWD_POLL_INTERVAL_MS = 1000;
+import { useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 
 /**
  * Extract directory name from full path
@@ -81,23 +70,100 @@ interface XTerminalProps {
   onTitleChange?: (title: string) => void;
 }
 
-export default function XTerminal({
-  opacity: propOpacity,
-  fontSize: propFontSize,
-  tabId: _tabId,
-  isVisible = true,
-  onSessionCreated,
-  onTitleChange,
-}: XTerminalProps) {
+export interface SearchOptions {
+  caseSensitive?: boolean;
+  wholeWord?: boolean;
+  regex?: boolean;
+}
+
+export interface XTerminalHandle {
+  search: (query: string, options?: SearchOptions) => boolean;
+  searchNext: () => boolean;
+  searchPrevious: () => boolean;
+  clearSearch: () => void;
+  focus: () => void;
+}
+
+const XTerminal = forwardRef<XTerminalHandle, XTerminalProps>(function XTerminal(
+  {
+    opacity: propOpacity,
+    fontSize: propFontSize,
+    tabId: _tabId,
+    isVisible = true,
+    onSessionCreated,
+    onTitleChange,
+  },
+  ref
+) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const unlistenOutputRef = useRef<(() => void) | null>(null);
   const unlistenExitRef = useRef<(() => void) | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const initializedRef = useRef(false);
   const lastEscTimeRef = useRef<number>(0);
+
+  // Store current search query for next/previous navigation
+  const currentSearchQueryRef = useRef<string>("");
+  const currentSearchOptionsRef = useRef<SearchOptions>({});
+
+  // Expose search methods via ref
+  useImperativeHandle(ref, () => ({
+    search: (query: string, options?: SearchOptions) => {
+      if (!searchAddonRef.current) {
+        return false;
+      }
+      if (!query) {
+        searchAddonRef.current.clearDecorations();
+        currentSearchQueryRef.current = "";
+        return false;
+      }
+      // Store for next/previous
+      currentSearchQueryRef.current = query;
+      currentSearchOptionsRef.current = options ?? {};
+
+      return searchAddonRef.current.findNext(query, {
+        caseSensitive: options?.caseSensitive,
+        wholeWord: options?.wholeWord,
+        regex: options?.regex,
+        incremental: true,
+      });
+    },
+    searchNext: () => {
+      if (!searchAddonRef.current || !currentSearchQueryRef.current) {
+        return false;
+      }
+      const opts = currentSearchOptionsRef.current;
+      return searchAddonRef.current.findNext(currentSearchQueryRef.current, {
+        caseSensitive: opts.caseSensitive,
+        wholeWord: opts.wholeWord,
+        regex: opts.regex,
+        incremental: false,
+      });
+    },
+    searchPrevious: () => {
+      if (!searchAddonRef.current || !currentSearchQueryRef.current) {
+        return false;
+      }
+      const opts = currentSearchOptionsRef.current;
+      return searchAddonRef.current.findPrevious(currentSearchQueryRef.current, {
+        caseSensitive: opts.caseSensitive,
+        wholeWord: opts.wholeWord,
+        regex: opts.regex,
+        incremental: false,
+      });
+    },
+    clearSearch: () => {
+      searchAddonRef.current?.clearDecorations();
+      currentSearchQueryRef.current = "";
+    },
+    focus: () => {
+      xtermRef.current?.focus();
+    },
+  }), []);
 
   // Update terminal background when opacity changes
   useEffect(() => {
@@ -149,15 +215,18 @@ export default function XTerminal({
 
     const fitAddon = new FitAddon();
     const webLinksAddon = new WebLinksAddon();
+    const searchAddon = new SearchAddon();
 
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(webLinksAddon);
+    terminal.loadAddon(searchAddon);
 
     terminal.open(terminalRef.current);
     fitAddon.fit();
 
     xtermRef.current = terminal;
     fitAddonRef.current = fitAddon;
+    searchAddonRef.current = searchAddon;
 
     // Get terminal dimensions
     const cols = terminal.cols;
@@ -329,6 +398,9 @@ export default function XTerminal({
       fitAddonRef.current = null;
       initializedRef.current = false;
     };
+    // Dependencies intentionally empty: initTerminal should only run once on mount.
+    // All mutable state is accessed via refs (sessionIdRef, xtermRef, etc.) which are stable.
+    // Re-running this would recreate the terminal and PTY session unnecessarily.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -485,4 +557,6 @@ export default function XTerminal({
       onClick={() => xtermRef.current?.focus()}
     />
   );
-}
+});
+
+export default XTerminal;

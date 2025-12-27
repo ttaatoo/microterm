@@ -1,5 +1,3 @@
-"use client";
-
 import { useTabContext } from "@/contexts/TabContext";
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 

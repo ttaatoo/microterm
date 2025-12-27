@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useCallback } from "react";
 import {
   loadSettings,
@@ -14,9 +12,9 @@ import {
   type Settings,
 } from "@/lib/settings";
 
-// Autostart functions - dynamically imported to avoid SSR issues
+// Autostart functions - dynamically imported to ensure Tauri runtime is available
 async function getAutostart() {
-  if (typeof window === "undefined" || !(window as Window & { __TAURI__?: unknown }).__TAURI__) return null;
+  if (!(window as Window & { __TAURI__?: unknown }).__TAURI__) return null;
   const { enable, disable, isEnabled } = await import(
     "@tauri-apps/plugin-autostart"
   );

@@ -553,7 +553,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(97, 175, 239, 0.1);
+  background: rgba(168, 85, 247, 0.1);
   border-radius: 8px;
   flex-shrink: 0;
 }
@@ -561,7 +561,7 @@ body {
 .onboarding-icon svg {
   width: 18px;
   height: 18px;
-  color: #61afef;
+  color: #a855f7;
 }
 
 .onboarding-text {
@@ -591,7 +591,7 @@ body {
   border-radius: 4px;
   font-size: 11px;
   font-family: inherit;
-  color: #61afef;
+  color: #a855f7;
 }
 
 .onboarding-footer {
@@ -603,10 +603,10 @@ body {
 .onboarding-button {
   width: 100%;
   padding: 12px 16px;
-  background: #61afef;
+  background: #a855f7;
   border: none;
   border-radius: 8px;
-  color: #282c34;
+  color: #ffffff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -614,7 +614,7 @@ body {
 }
 
 .onboarding-button:hover {
-  background: #52a0e0;
+  background: #9333ea;
 }
 
 .onboarding-button:active {
@@ -628,6 +628,7 @@ body {
   height: 40px;
   background: #101010;
   padding: 6px 8px;
+  padding-bottom: 0;
   gap: 8px;
   flex-shrink: 0;
   -webkit-app-region: drag;
@@ -658,8 +659,8 @@ body {
   height: 28px;
   padding: 0 14px;
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.15s ease;
   -webkit-app-region: no-drag;
@@ -667,16 +668,27 @@ body {
   min-width: 120px;
   gap: 8px;
   flex-shrink: 0;
+  position: relative;
+}
+
+.tab::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  border-radius: 2px 2px 0 0;
+  transition: background 0.15s ease;
 }
 
 .tab:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.tab-active {
-  background: rgba(0, 0, 0, 0.4);
-  border-color: rgba(255, 255, 255, 0.25);
+.tab-active::after {
+  background: #a855f7;
 }
 
 .tab-title {
@@ -768,4 +780,237 @@ body {
   visibility: visible;
   position: relative;
   pointer-events: auto;
+}
+
+/* Search bar styles */
+.search-bar-overlay {
+  position: absolute;
+  top: 48px;
+  right: 8px;
+  z-index: 100;
+  animation: slideInSearch 0.15s ease-out;
+}
+
+@keyframes slideInSearch {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.search-input-container {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 0 10px;
+  transition: border-color 0.15s ease;
+  width: 180px;
+}
+
+.search-input-container:focus-within {
+  border-color: rgba(168, 85, 247, 0.5);
+}
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 6px 0;
+  width: 100%;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.search-options {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding-right: 6px;
+  margin-right: 2px;
+}
+
+.search-option-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.search-option-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.search-option-btn.active {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #a855f7;
+}
+
+.whole-word-icon {
+  font-size: 10px;
+  letter-spacing: -1px;
+}
+
+.search-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  padding-left: 6px;
+  margin-left: 2px;
+}
+
+.search-nav-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.search-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.search-nav-btn:disabled {
+  color: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+}
+
+.search-close-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 2px;
+}
+
+.search-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* xterm.js search decoration styles */
+.xterm .xterm-decoration-overview-ruler {
+  right: 0;
+  pointer-events: none;
+}
+
+/* Search match highlighting */
+.xterm-find-result-decoration {
+  background-color: rgba(209, 143, 82, 0.4) !important;
+}
+
+.xterm-find-active-result-decoration {
+  background-color: rgba(168, 85, 247, 0.6) !important;
+}
+
+/* Error Boundary styles */
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: rgba(30, 30, 30, 0.95);
+  color: #e5e5e5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.error-boundary-content {
+  text-align: center;
+  padding: 2rem;
+  max-width: 400px;
+}
+
+.error-boundary h2 {
+  color: #e06c75;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.error-boundary .error-message {
+  color: #abb2bf;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+.error-boundary .error-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.error-boundary .error-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: opacity 0.2s;
+}
+
+.error-boundary .error-button:hover {
+  opacity: 0.8;
+}
+
+.error-boundary .error-button.retry {
+  background: #a855f7;
+  color: #ffffff;
+}
+
+.error-boundary .error-button.reload {
+  background: #4b5263;
+  color: #e5e5e5;
 }

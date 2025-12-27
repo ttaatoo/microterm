@@ -9,7 +9,7 @@ A micro terminal that lives in your macOS menubar. Lightweight, fast, always one
 
 > **Note:** This application is **macOS only**. It uses native macOS APIs (NSPanel, NSEvent, menubar/tray) that are not available on other platforms.
 
-Built with **Rust**, **Tauri 2.0**, and **Next.js 14**.
+Built with **Rust**, **Tauri 2.0**, and **Vite + React**.
 
 <p align="center">
   <img src="docs/screenshot.png" alt="µTerm Screenshot" width="760">
@@ -47,7 +47,7 @@ Download the latest `.dmg` from the [Releases](https://github.com/ttaatoo/microt
 #### Prerequisites
 
 - **Rust** (1.70+) - Install from [rustup.rs](https://rustup.rs/)
-- **Node.js 18+** and npm
+- **Bun** (latest) - Install from [bun.sh](https://bun.sh/)
 - **macOS 10.13+**
 
 #### Steps
@@ -58,11 +58,11 @@ git clone https://github.com/ttaatoo/microterm.git
 cd microterm
 
 # Install dependencies
-npm install
+bun install
 
 # Build the application
-npm run build
-npm run tauri build
+bun run build
+bun run tauri build
 ```
 
 The built application will be in `src-tauri/target/release/bundle/`.
@@ -71,17 +71,17 @@ The built application will be in `src-tauri/target/release/bundle/`.
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
-# Run in development mode (starts both Next.js and Tauri)
-npm run tauri dev
+# Run in development mode (starts both Vite and Tauri)
+bun run tauri dev
 
 # Run tests
-npm run test         # Watch mode
-npm run test:run     # Single run
+bun run test         # Watch mode
+bun run test:run     # Single run
 
 # Lint
-npm run lint
+bun run lint
 ```
 
 ## Usage
@@ -110,18 +110,18 @@ npm run lint
 | Component  | Technology            |
 | ---------- | --------------------- |
 | Backend    | Rust + Tauri 2.0      |
-| Frontend   | Next.js 14 + React 18 |
+| Frontend   | Vite + React 18       |
 | Terminal   | xterm.js 5.5          |
 | PTY        | portable-pty          |
 | macOS APIs | objc2 + objc2-app-kit |
 | Testing    | Vitest                |
+| Runtime    | Bun                   |
 
 ## Project Structure
 
 ```
 microterm/
-├── src/                    # Next.js frontend
-│   ├── app/               # App Router pages
+├── src/                    # Vite + React frontend
 │   ├── components/        # React components
 │   │   ├── XTerminal.tsx  # Terminal UI with xterm.js
 │   │   ├── TabBar.tsx     # Tab bar with multi-tab support

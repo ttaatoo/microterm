@@ -322,6 +322,259 @@ pub async fn complete_command(prefix: String) -> Result<Vec<String>, String> {
     Ok(completions)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ============== validate_command tests ==============
+
+    #[test]
+    fn test_validate_command_valid() {
+        assert!(validate_command("ls").is_ok());
+        assert!(validate_command("echo").is_ok());
+        assert!(validate_command("/usr/bin/ls").is_ok());
+        assert!(validate_command("my_command").is_ok());
+        assert!(validate_command("command123").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_empty() {
+        let result = validate_command("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("empty"));
+    }
+
+    #[test]
+    fn test_validate_command_too_long() {
+        let long_cmd = "a".repeat(MAX_COMMAND_LENGTH + 1);
+        let result = validate_command(&long_cmd);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("too long"));
+    }
+
+    #[test]
+    fn test_validate_command_max_length_ok() {
+        let max_cmd = "a".repeat(MAX_COMMAND_LENGTH);
+        assert!(validate_command(&max_cmd).is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_forbidden_chars() {
+        // Test each forbidden character
+        let forbidden = vec![
+            (";", ";"),
+            ("&", "&"),
+            ("|", "|"),
+            ("$", "$"),
+            ("`", "`"),
+            ("(", "("),
+            (")", ")"),
+            ("{", "{"),
+            ("}", "}"),
+            ("[", "["),
+            ("]", "]"),
+            ("<", "<"),
+            (">", ">"),
+            ("'", "'"),
+            ("\"", "\""),
+            ("\\", "\\"),
+        ];
+
+        for (char_str, display) in forbidden {
+            let cmd = format!("command{}", char_str);
+            let result = validate_command(&cmd);
+            assert!(
+                result.is_err(),
+                "Command with '{}' should be rejected",
+                display
+            );
+            assert!(
+                result.unwrap_err().contains("forbidden character"),
+                "Error should mention forbidden character for '{}'",
+                display
+            );
+        }
+    }
+
+    #[test]
+    fn test_validate_command_special_chars_display() {
+        // Test special character display in error message
+        let result = validate_command("cmd\n");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("\\n"));
+
+        let result = validate_command("cmd\r");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("\\r"));
+
+        let result = validate_command("cmd\0");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("\\0"));
+    }
+
+    #[test]
+    fn test_validate_command_starts_with_dash() {
+        let result = validate_command("-rf");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("start with '-'"));
+
+        let result = validate_command("--help");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_command_path_traversal() {
+        let result = validate_command("../etc/passwd");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("path traversal"));
+
+        let result = validate_command("foo/../bar");
+        assert!(result.is_err());
+
+        // Single dot is OK
+        assert!(validate_command("./script").is_ok());
+    }
+
+    // ============== validate_args tests ==============
+
+    #[test]
+    fn test_validate_args_valid() {
+        let args = vec!["arg1".to_string(), "arg2".to_string()];
+        assert!(validate_args(&args).is_ok());
+
+        // Empty args is valid
+        assert!(validate_args(&[]).is_ok());
+    }
+
+    #[test]
+    fn test_validate_args_too_many() {
+        let args: Vec<String> = (0..MAX_ARGS_COUNT + 1).map(|i| i.to_string()).collect();
+        let result = validate_args(&args);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Too many arguments"));
+    }
+
+    #[test]
+    fn test_validate_args_max_count_ok() {
+        let args: Vec<String> = (0..MAX_ARGS_COUNT).map(|i| i.to_string()).collect();
+        assert!(validate_args(&args).is_ok());
+    }
+
+    #[test]
+    fn test_validate_args_too_long() {
+        let long_arg = "a".repeat(MAX_ARG_LENGTH + 1);
+        let args = vec![long_arg];
+        let result = validate_args(&args);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("too long"));
+    }
+
+    #[test]
+    fn test_validate_args_max_length_ok() {
+        let max_arg = "a".repeat(MAX_ARG_LENGTH);
+        let args = vec![max_arg];
+        assert!(validate_args(&args).is_ok());
+    }
+
+    #[test]
+    fn test_validate_args_null_byte() {
+        let args = vec!["normal".to_string(), "has\0null".to_string()];
+        let result = validate_args(&args);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err();
+        assert!(err_msg.contains("null byte"));
+        assert!(err_msg.contains("1")); // Should mention arg index
+    }
+
+    #[test]
+    fn test_validate_args_null_byte_index() {
+        let args = vec![
+            "arg0".to_string(),
+            "arg1".to_string(),
+            "arg2\0bad".to_string(),
+        ];
+        let result = validate_args(&args);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("2")); // Index of bad arg
+    }
+
+    // ============== Data structure tests ==============
+
+    #[test]
+    fn test_command_result_serialization() {
+        let result = CommandResult {
+            stdout: "output".to_string(),
+            stderr: "error".to_string(),
+            exit_code: 0,
+        };
+
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains("output"));
+        assert!(json.contains("error"));
+        assert!(json.contains("0"));
+
+        let deserialized: CommandResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.stdout, "output");
+        assert_eq!(deserialized.stderr, "error");
+        assert_eq!(deserialized.exit_code, 0);
+    }
+
+    #[test]
+    fn test_stream_chunk_serialization() {
+        let chunk = StreamChunk {
+            chunk: "data".to_string(),
+            is_stderr: false,
+        };
+
+        let json = serde_json::to_string(&chunk).unwrap();
+        let deserialized: StreamChunk = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.chunk, "data");
+        assert!(!deserialized.is_stderr);
+
+        let stderr_chunk = StreamChunk {
+            chunk: "error".to_string(),
+            is_stderr: true,
+        };
+        let json = serde_json::to_string(&stderr_chunk).unwrap();
+        let deserialized: StreamChunk = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.is_stderr);
+    }
+
+    // ============== Constants validation ==============
+
+    #[test]
+    fn test_constants_are_reasonable() {
+        assert!(MAX_COMMAND_LENGTH > 0);
+        assert!(MAX_ARG_LENGTH > 0);
+        assert!(MAX_ARGS_COUNT > 0);
+        assert!(STREAM_BUFFER_SIZE > 0);
+
+        // Ensure we have sensible limits
+        assert!(MAX_COMMAND_LENGTH >= 256); // At least allow reasonable paths
+        assert!(MAX_ARGS_COUNT >= 10); // At least allow common use cases
+    }
+
+    #[test]
+    fn test_builtin_commands_not_empty() {
+        assert!(!BUILTIN_COMMANDS.is_empty());
+        // Common commands should be present
+        assert!(BUILTIN_COMMANDS.contains(&"ls"));
+        assert!(BUILTIN_COMMANDS.contains(&"cd"));
+        assert!(BUILTIN_COMMANDS.contains(&"echo"));
+    }
+
+    #[test]
+    fn test_forbidden_chars_comprehensive() {
+        // Ensure common injection characters are forbidden
+        assert!(FORBIDDEN_COMMAND_CHARS.contains(&';'));
+        assert!(FORBIDDEN_COMMAND_CHARS.contains(&'|'));
+        assert!(FORBIDDEN_COMMAND_CHARS.contains(&'&'));
+        assert!(FORBIDDEN_COMMAND_CHARS.contains(&'$'));
+        assert!(FORBIDDEN_COMMAND_CHARS.contains(&'`'));
+        assert!(FORBIDDEN_COMMAND_CHARS.contains(&'\0'));
+    }
+}
+
 /// Hide the main window and update visibility state
 #[command]
 pub fn hide_window(app: AppHandle) -> Result<(), String> {

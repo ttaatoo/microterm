@@ -1,6 +1,4 @@
-"use client";
-
-import React, { Component, ErrorInfo, ReactNode } from "react";
+import { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
@@ -50,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      // Default error UI
+      // Default error UI (styles in globals.css)
       return (
         <div className="error-boundary">
           <div className="error-boundary-content">
@@ -67,58 +65,6 @@ export class ErrorBoundary extends Component<Props, State> {
               </button>
             </div>
           </div>
-          <style jsx>{`
-            .error-boundary {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              height: 100vh;
-              background: rgba(30, 30, 30, 0.95);
-              color: #e5e5e5;
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                sans-serif;
-            }
-            .error-boundary-content {
-              text-align: center;
-              padding: 2rem;
-              max-width: 400px;
-            }
-            h2 {
-              color: #e06c75;
-              margin-bottom: 1rem;
-              font-size: 1.5rem;
-            }
-            .error-message {
-              color: #abb2bf;
-              margin-bottom: 1.5rem;
-              font-size: 0.9rem;
-              word-break: break-word;
-            }
-            .error-actions {
-              display: flex;
-              gap: 1rem;
-              justify-content: center;
-            }
-            .error-button {
-              padding: 0.5rem 1rem;
-              border: none;
-              border-radius: 4px;
-              cursor: pointer;
-              font-size: 0.9rem;
-              transition: opacity 0.2s;
-            }
-            .error-button:hover {
-              opacity: 0.8;
-            }
-            .error-button.retry {
-              background: #61afef;
-              color: #1e1e1e;
-            }
-            .error-button.reload {
-              background: #4b5263;
-              color: #e5e5e5;
-            }
-          `}</style>
         </div>
       );
     }

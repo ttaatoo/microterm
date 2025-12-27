@@ -1,7 +1,6 @@
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
-import nextPlugin from "@next/eslint-plugin-next";
 
 export default [
   {
@@ -19,7 +18,6 @@ export default [
     plugins: {
       "@typescript-eslint": tseslint,
       "react-hooks": reactHooks,
-      "@next/next": nextPlugin,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
@@ -37,8 +35,7 @@ export default [
   {
     ignores: [
       "node_modules/",
-      ".next/",
-      "out/",
+      "dist/",
       "src-tauri/",
     ],
   },

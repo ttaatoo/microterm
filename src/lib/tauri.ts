@@ -11,7 +11,7 @@ export interface StreamChunk {
 
 // Check if running in Tauri environment
 function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI__" in window;
+  return "__TAURI__" in window;
 }
 
 // Dynamic imports to avoid issues when not in Tauri environment

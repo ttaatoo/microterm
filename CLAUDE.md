@@ -6,33 +6,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Development - single command (recommended)
-npm run tauri dev     # Starts both Next.js dev server and Tauri
+bun run tauri dev     # Starts both Vite dev server and Tauri
 
 # Production build
-npm run build         # Build Next.js frontend (outputs to ./out/)
-npm run tauri build   # Build final macOS application
+bun run build         # Build Vite frontend (outputs to ./dist/)
+bun run tauri build   # Build final macOS application
 
 # Tests
-npm run test          # Watch mode (Vitest)
-npm run test:run      # Single run
-npm run test:coverage # With coverage report
+bun run test          # Watch mode (Vitest)
+bun run test:run      # Single run
+bun run test:coverage # With coverage report
 
 # Run a single test file
-npm run test:run src/lib/settings.test.ts
+bun run test:run src/lib/settings.test.ts
 
 # Rust tests
 cd src-tauri && cargo test
 
 # Lint
-npm run lint
+bun run lint
 ```
 
 ## Architecture Overview
 
-macOS menubar terminal application built with **Tauri 2.0** (Rust backend) and **Next.js 14** (React frontend).
+macOS menubar terminal application built with **Tauri 2.0** (Rust backend) and **Vite + React** (frontend).
 
 ### Frontend-Backend Communication
 
@@ -41,7 +41,7 @@ Tauri IPC connects React frontend and Rust backend via two patterns:
 1. **Commands** (request-response): Frontend calls `invoke()` → Rust handles in `commands.rs` or `pty_commands.rs`
 2. **Events** (streaming): Rust emits `pty-output`/`pty-exit` → Frontend listens via `listen()`
 
-Frontend wrapper `src/lib/tauri.ts` provides typed functions with dynamic imports (checks `window.__TAURI__` for SSR safety).
+Frontend wrapper `src/lib/tauri.ts` provides typed functions with dynamic imports (checks `window.__TAURI__` for browser safety).
 
 ### Rust Backend (src-tauri/)
 
@@ -72,21 +72,21 @@ Permissions in `src-tauri/capabilities/default.json`:
 ### Key Frontend Components
 
 - `src/components/XTerminal.tsx` - Main terminal UI with xterm.js, PTY integration, double-ESC to hide
-- `src/lib/tauri.ts` - Typed IPC wrapper with SSR-safe dynamic imports
+- `src/lib/tauri.ts` - Typed IPC wrapper with dynamic imports
 - `src/lib/settings.ts` - Persisted settings (opacity, font size) in localStorage
 
-### Next.js Configuration
+### Vite Configuration
 
 - **Dev**: `devUrl: http://localhost:3000` in tauri.conf.json
-- **Prod**: Static export to `./out/`, loaded via `frontendDist: ../out`
+- **Prod**: Static build to `./dist/`, loaded via `frontendDist: ../dist`
 
 ## Troubleshooting
 
-**If Next.js dev server has cache issues:**
+**If Vite dev server has cache issues:**
 
 ```bash
-rm -rf .next out node_modules/.cache
-npm run tauri dev
+rm -rf dist node_modules/.vite
+bun run tauri dev
 ```
 
 **If port 3000 is in use:** Kill other processes or update `devUrl` in `src-tauri/tauri.conf.json`.
@@ -220,187 +220,94 @@ BREAKING CHANGE: drop support for macOS 13 and earlier
 4. body and footer must be preceded by a blank line
 5. BREAKING CHANGE must be uppercase
 
-## Release Workflow
+## Release Workflow (Automated)
 
-**When releasing a new version, all the following steps must be executed in order:**
+This project uses [Release Please](https://github.com/googleapis/release-please) for automated versioning and releases.
 
-### 1. Update Version Number
+### How It Works
 
-Edit the `version` field in `src-tauri/tauri.conf.json`:
+1. **Write Conventional Commits** - Use `feat:`, `fix:`, etc. in your commit messages
+2. **Merge to main** - Release Please analyzes commits and creates/updates a Release PR
+3. **Merge Release PR** - Triggers automatic build and GitHub Release creation
 
-```json
-{
-  "version": "x.y.z"
-}
-```
+### Automatic Version Bumping
 
-### 2. Update CHANGELOG.md
+Release Please determines version bumps based on commit types:
 
-Add the new version's changelog entry at the top of `CHANGELOG.md`, following the [Keep a Changelog](https://keepachangelog.com/) format:
+| Commit Type | Version Bump | Example |
+|-------------|--------------|---------|
+| `feat:` | MINOR (0.x.0) | `feat: add tab completion` |
+| `fix:` | PATCH (0.0.x) | `fix: resolve crash on startup` |
+| `feat!:` or `BREAKING CHANGE:` | MAJOR (x.0.0) | `feat!: redesign settings API` |
 
-```markdown
-## [x.y.z] - YYYY-MM-DD
+### Files Updated Automatically
 
-### Added
+Release Please updates these files when a release is created:
 
-- New features...
+- `package.json` - npm version
+- `src-tauri/tauri.conf.json` - Tauri app version
+- `src-tauri/Cargo.toml` - Rust crate version
+- `CHANGELOG.md` - Generated from commit messages
 
-### Changed
+### Release PR
 
-- Changes...
+When you push commits to `main`, Release Please will:
 
-### Fixed
+1. Create or update a PR titled `chore: release x.y.z`
+2. The PR contains version bumps and CHANGELOG updates
+3. Merge when ready to release
 
-- Fixes...
-```
+### Build and Publish
 
-Also update the version comparison links at the bottom of the file.
+After merging the Release PR:
 
-### 3. Commit Version Update
+1. GitHub Actions builds the Tauri app
+2. Creates a GitHub Release with the tag
+3. Uploads DMG installer (both original and ASCII-renamed for Homebrew)
 
-```bash
-git add src-tauri/tauri.conf.json CHANGELOG.md
-git commit -m "chore: bump version to x.y.z"
-git push origin main
-```
+### Manual Steps After Release
 
-### 4. Build DMG Installer
-
-```bash
-# Build macOS application (generates .app and .dmg)
-npm run tauri build
-
-# Rename DMG to ASCII filename (required for Homebrew compatibility)
-cp "src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg" \
-   "src-tauri/target/release/bundle/dmg/microterm_<version>_aarch64.dmg"
-```
-
-Build artifacts location:
-
-- `src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg` - Original DMG (non-ASCII name)
-- `src-tauri/target/release/bundle/dmg/microterm_<version>_aarch64.dmg` - Renamed DMG for release
-- `src-tauri/target/release/bundle/macos/µTerm.app` - Application bundle
-
-**⚠️ Important:** Always upload the renamed `microterm_<version>_aarch64.dmg` to GitHub Release (Homebrew requires ASCII-only URLs).
-
-### 5. Create Git Tag
+The only manual step remaining is updating the Homebrew tap:
 
 ```bash
-git tag -a v<version> -m "$(cat <<'EOF'
-µTerm v<version> - <short description>
+# Get SHA256 from the release assets
+curl -sL "https://github.com/ttaatoo/microterm/releases/download/v<version>/microterm_<version>_aarch64.dmg" | shasum -a 256
 
-Features:
-- Feature 1
-- Feature 2
-
-Changes:
-- Change 1
-
-Fixes:
-- Fix 1
-EOF
-)"
-git push origin v<version>
-```
-
-### 6. Create GitHub Release and Upload DMG
-
-```bash
-# Create release and upload DMG
-gh release create v<version> \
-  --title "µTerm v<version> - <title>" \
-  --notes "$(cat <<'EOF'
-## What's New
-
-### ✨ Features
-- **Feature title** - Feature description
-
-### 🎨 UI/UX
-- UI improvements
-
-### 🔧 Technical
-- Technical improvements
-
-### 🐛 Bug Fixes
-- Bug fix content
-
----
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-EOF
-)" \
-  "src-tauri/target/release/bundle/dmg/microterm_<version>_aarch64.dmg"
-```
-
-**⚠️ Important: Upload the renamed DMG (ASCII filename)!** Users need the DMG file to install the application.
-
-### 7. Update Homebrew Tap
-
-Update the Homebrew cask to allow users to install via `brew install --cask microterm`.
-
-```bash
-# Calculate SHA256 of the renamed DMG (use the ASCII filename)
-shasum -a 256 src-tauri/target/release/bundle/dmg/microterm_<version>_aarch64.dmg
-```
-
-Edit `~/Github/homebrew-microterm/Casks/microterm.rb`:
-
-```ruby
-cask "microterm" do
-  version "<version>"
-  sha256 "<sha256_from_above>"
-  # ... rest unchanged
-end
-```
-
-Commit and push the update:
-
-```bash
-git -C ~/Github/homebrew-microterm add .
-git -C ~/Github/homebrew-microterm commit -m "feat: bump to v<version>"
+# Update homebrew-microterm/Casks/microterm.rb with new version and SHA256
+git -C ~/Github/homebrew-microterm commit -am "feat: bump to v<version>"
 git -C ~/Github/homebrew-microterm push
 ```
 
 **Homebrew tap repository:** https://github.com/ttaatoo/homebrew-microterm
 
-### 8. Verify Release
+### Configuration Files
+
+- `release-please-config.json` - Release Please configuration
+- `.release-please-manifest.json` - Current version tracking
+- `.github/workflows/release-please.yml` - GitHub Actions workflow
+
+### Verify Release
 
 ```bash
-# Confirm release assets are correct
+# Check release assets
 gh release view v<version> --json assets --jq '.assets[].name'
 
-# Test Homebrew installation (optional)
-brew update
-brew upgrade --cask microterm
+# Expected output includes:
+# - µTerm_<version>_aarch64.dmg (original)
+# - microterm_<version>_aarch64.dmg (ASCII for Homebrew)
 ```
 
-Expected output: `microterm_<version>_aarch64.dmg`
+### Manual Release (Emergency)
 
-### Release Checklist
-
-Confirm all steps are completed before releasing:
-
-- [ ] Update `tauri.conf.json` version number
-- [ ] Update `CHANGELOG.md` (including comparison links at bottom)
-- [ ] Commit and push version update
-- [ ] Run `npm run tauri build` to build
-- [ ] **Rename DMG to ASCII filename** (`microterm_<version>_aarch64.dmg`)
-- [ ] Create git tag (with detailed release notes) and push
-- [ ] Create GitHub release
-- [ ] **Upload renamed DMG** (ASCII filename required for Homebrew)
-- [ ] **Update Homebrew tap** (version + SHA256 in `homebrew-microterm`)
-- [ ] Verify release assets are correct
-
-### Updating an Existing Release Tag
-
-If you need to update a published tag (e.g., after fixing CI issues):
+If you need to manually trigger a release:
 
 ```bash
-# Delete local and remote tag
-git tag -d v<version>
-git push origin :refs/tags/v<version>
+# Build locally
+bun run tauri build
 
-# Delete GitHub release
-gh release delete v<version> --yes
-
-# Recreate tag and release (follow steps 5-7 above)
+# Create release manually
+gh release create v<version> \
+  --title "µTerm v<version>" \
+  --generate-notes \
+  "src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg"
 ```
