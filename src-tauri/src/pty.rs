@@ -120,9 +120,9 @@ impl PtyManager {
 
         // Add common system paths
         path_dirs.extend([
-            "/opt/homebrew/bin".to_string(),      // Homebrew on Apple Silicon
+            "/opt/homebrew/bin".to_string(), // Homebrew on Apple Silicon
             "/opt/homebrew/sbin".to_string(),
-            "/usr/local/bin".to_string(),         // Homebrew on Intel Mac
+            "/usr/local/bin".to_string(), // Homebrew on Intel Mac
             "/usr/local/sbin".to_string(),
             "/usr/bin".to_string(),
             "/bin".to_string(),
