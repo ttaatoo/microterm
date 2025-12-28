@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1](https://github.com/ttaatoo/microterm/compare/v1.2.0...v1.2.1) (2025-12-28)
+
+
+### Bug Fixes
+
+* **pty:** include Homebrew paths in PTY environment ([ee4660b](https://github.com/ttaatoo/microterm/commit/ee4660bfe59535fffe0fbb414dff5caccea6a7d8))
+
 ## [1.2.0](https://github.com/ttaatoo/microterm/compare/v1.1.0...v1.2.0) (2025-12-27)
 
 
