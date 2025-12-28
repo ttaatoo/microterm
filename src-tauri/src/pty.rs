@@ -107,9 +107,37 @@ impl PtyManager {
         } else {
             cmd.env("LANG", "en_US.UTF-8");
         }
-        if let Ok(path) = std::env::var("PATH") {
-            cmd.env("PATH", path);
+
+        // Build PATH with common tool locations
+        // macOS GUI apps don't inherit shell PATH, so we need to include common paths
+        let mut path_dirs: Vec<String> = Vec::new();
+
+        // Add user's local bin directories first (highest priority)
+        if !home.is_empty() {
+            path_dirs.push(format!("{}/bin", home));
+            path_dirs.push(format!("{}/.local/bin", home));
         }
+
+        // Add common system paths
+        path_dirs.extend([
+            "/opt/homebrew/bin".to_string(),      // Homebrew on Apple Silicon
+            "/opt/homebrew/sbin".to_string(),
+            "/usr/local/bin".to_string(),         // Homebrew on Intel Mac
+            "/usr/local/sbin".to_string(),
+            "/usr/bin".to_string(),
+            "/bin".to_string(),
+            "/usr/sbin".to_string(),
+            "/sbin".to_string(),
+        ]);
+
+        // Append any existing PATH from the environment
+        let base_path = path_dirs.join(":");
+        let full_path = if let Ok(existing_path) = std::env::var("PATH") {
+            format!("{}:{}", base_path, existing_path)
+        } else {
+            base_path
+        };
+        cmd.env("PATH", full_path);
         // LC_ALL for proper locale handling
         if let Ok(lc_all) = std::env::var("LC_ALL") {
             cmd.env("LC_ALL", lc_all);
