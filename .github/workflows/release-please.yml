@@ -52,30 +52,78 @@ jobs:
         run: bun run build
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        run: |
+          cd src-tauri
+          cargo build --release
+          cd ..
+          # Create DMG using tauri bundler
+          bunx tauri build --bundles dmg
+
+      - name: Upload assets to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ needs.release-please.outputs.tag_name }}
-          releaseName: "µTerm ${{ needs.release-please.outputs.tag_name }}"
-          releaseBody: "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details."
-          releaseDraft: false
-          prerelease: false
-          args: --verbose
-
-      - name: Rename DMG for Homebrew compatibility
         run: |
           VERSION="${{ needs.release-please.outputs.version }}"
+          TAG="${{ needs.release-please.outputs.tag_name }}"
+
+          # Upload original DMG
           ORIGINAL_DMG="src-tauri/target/release/bundle/dmg/µTerm_${VERSION}_aarch64.dmg"
+          if [ -f "$ORIGINAL_DMG" ]; then
+            gh release upload "$TAG" "$ORIGINAL_DMG" --clobber
+          fi
+
+          # Create and upload renamed DMG for Homebrew
           RENAMED_DMG="src-tauri/target/release/bundle/dmg/microterm_${VERSION}_aarch64.dmg"
           if [ -f "$ORIGINAL_DMG" ]; then
             cp "$ORIGINAL_DMG" "$RENAMED_DMG"
-            echo "DMG_PATH=$RENAMED_DMG" >> $GITHUB_ENV
+            gh release upload "$TAG" "$RENAMED_DMG" --clobber
           fi
 
-      - name: Upload renamed DMG to release
-        if: env.DMG_PATH != ''
+  # Automatic recovery: fix stuck release PRs
+  fix-stuck-releases:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: release-please
+    steps:
+      - name: Fix stuck release PR labels
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ needs.release-please.outputs.tag_name }}" "${{ env.DMG_PATH }}" --clobber
+          # Find merged release PRs with "autorelease: pending" label
+          STUCK_PRS=$(gh pr list \
+            --repo ${{ github.repository }} \
+            --state merged \
+            --label "autorelease: pending" \
+            --json number,title \
+            --jq '.[].number')
+
+          for PR_NUM in $STUCK_PRS; do
+            echo "Checking PR #$PR_NUM..."
+
+            # Get the version from PR title (format: "chore: release vX.Y.Z" or "chore: release X.Y.Z")
+            PR_TITLE=$(gh pr view $PR_NUM --repo ${{ github.repository }} --json title --jq '.title')
+            VERSION=$(echo "$PR_TITLE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+
+            if [ -n "$VERSION" ]; then
+              TAG="v$VERSION"
+
+              # Check if tag exists
+              if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+                echo "Tag $TAG exists, updating label for PR #$PR_NUM"
+
+                # Ensure "autorelease: tagged" label exists
+                gh label create "autorelease: tagged" \
+                  --repo ${{ github.repository }} \
+                  --description "Release PR that has been tagged" \
+                  --color "0e8a16" 2>/dev/null || true
+
+                # Update labels
+                gh pr edit $PR_NUM \
+                  --repo ${{ github.repository }} \
+                  --remove-label "autorelease: pending" \
+                  --add-label "autorelease: tagged"
+
+                echo "Fixed PR #$PR_NUM"
+              fi
+            fi
+          done

@@ -261,9 +261,16 @@ When you push commits to `main`, Release Please will:
 
 After merging the Release PR:
 
-1. GitHub Actions builds the Tauri app
-2. Creates a GitHub Release with the tag
+1. Release Please creates the git tag and GitHub Release
+2. GitHub Actions builds the Tauri app on macOS
 3. Uploads DMG installer (both original and ASCII-renamed for Homebrew)
+
+### Automatic Recovery
+
+The workflow includes automatic recovery for stuck release PRs:
+
+- **Problem**: Sometimes Release Please merges a PR but doesn't update the label from `autorelease: pending` to `autorelease: tagged`
+- **Solution**: The `fix-stuck-releases` job runs on every push and automatically fixes any stuck PRs by checking if the corresponding tag exists
 
 ### Manual Steps After Release
 
