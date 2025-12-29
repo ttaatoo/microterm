@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2](https://github.com/ttaatoo/microterm/compare/v1.2.1...v1.2.2) (2025-12-29)
+
+
+### Bug Fixes
+
+* enable cmd+click to open URLs in system browser ([#5](https://github.com/ttaatoo/microterm/issues/5)) ([5c14b30](https://github.com/ttaatoo/microterm/commit/5c14b3005fc506844148e3a87d02e57a6b0b3b0d))
+
 ## [1.2.1](https://github.com/ttaatoo/microterm/compare/v1.2.0...v1.2.1) (2025-12-28)
 
 
