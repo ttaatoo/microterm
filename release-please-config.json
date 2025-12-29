@@ -32,7 +32,7 @@
     { "type": "ci", "section": "CI/CD", "hidden": true },
     { "type": "build", "section": "Build", "hidden": true }
   ],
-  "pull-request-title-pattern": "chore: release ${version}",
-  "pull-request-header": "## Release ${version}",
+  "pull-request-title-pattern": "chore: release v${version}",
+  "pull-request-header": "## Release v${version}",
   "separate-pull-requests": false
 }
