@@ -1,20 +1,21 @@
 import {
-  PTY_RESTART_DELAY_MS,
-  WINDOW_FOCUS_DELAY_MS,
-  MAX_PTY_RETRIES,
-  PTY_RETRY_DELAY_MS,
-  WINDOW_VISIBLE_FOCUS_DELAY_MS,
+  CWD_POLL_INTERVAL_MS,
   DOUBLE_ESC_INTERVAL_MS,
   ESC_KEY,
-  CWD_POLL_INTERVAL_MS,
+  MAX_PTY_RETRIES,
+  PTY_RESTART_DELAY_MS,
+  PTY_RETRY_DELAY_MS,
+  WINDOW_FOCUS_DELAY_MS,
+  WINDOW_VISIBLE_FOCUS_DELAY_MS,
 } from "@/lib/constants";
 import { loadSettings } from "@/lib/settings";
+import { openUrl } from "@/lib/tauri";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 
 /**
  * Extract directory name from full path
@@ -111,59 +112,63 @@ const XTerminal = forwardRef<XTerminalHandle, XTerminalProps>(function XTerminal
   const currentSearchOptionsRef = useRef<SearchOptions>({});
 
   // Expose search methods via ref
-  useImperativeHandle(ref, () => ({
-    search: (query: string, options?: SearchOptions) => {
-      if (!searchAddonRef.current) {
-        return false;
-      }
-      if (!query) {
-        searchAddonRef.current.clearDecorations();
-        currentSearchQueryRef.current = "";
-        return false;
-      }
-      // Store for next/previous
-      currentSearchQueryRef.current = query;
-      currentSearchOptionsRef.current = options ?? {};
+  useImperativeHandle(
+    ref,
+    () => ({
+      search: (query: string, options?: SearchOptions) => {
+        if (!searchAddonRef.current) {
+          return false;
+        }
+        if (!query) {
+          searchAddonRef.current.clearDecorations();
+          currentSearchQueryRef.current = "";
+          return false;
+        }
+        // Store for next/previous
+        currentSearchQueryRef.current = query;
+        currentSearchOptionsRef.current = options ?? {};
 
-      return searchAddonRef.current.findNext(query, {
-        caseSensitive: options?.caseSensitive,
-        wholeWord: options?.wholeWord,
-        regex: options?.regex,
-        incremental: true,
-      });
-    },
-    searchNext: () => {
-      if (!searchAddonRef.current || !currentSearchQueryRef.current) {
-        return false;
-      }
-      const opts = currentSearchOptionsRef.current;
-      return searchAddonRef.current.findNext(currentSearchQueryRef.current, {
-        caseSensitive: opts.caseSensitive,
-        wholeWord: opts.wholeWord,
-        regex: opts.regex,
-        incremental: false,
-      });
-    },
-    searchPrevious: () => {
-      if (!searchAddonRef.current || !currentSearchQueryRef.current) {
-        return false;
-      }
-      const opts = currentSearchOptionsRef.current;
-      return searchAddonRef.current.findPrevious(currentSearchQueryRef.current, {
-        caseSensitive: opts.caseSensitive,
-        wholeWord: opts.wholeWord,
-        regex: opts.regex,
-        incremental: false,
-      });
-    },
-    clearSearch: () => {
-      searchAddonRef.current?.clearDecorations();
-      currentSearchQueryRef.current = "";
-    },
-    focus: () => {
-      xtermRef.current?.focus();
-    },
-  }), []);
+        return searchAddonRef.current.findNext(query, {
+          caseSensitive: options?.caseSensitive,
+          wholeWord: options?.wholeWord,
+          regex: options?.regex,
+          incremental: true,
+        });
+      },
+      searchNext: () => {
+        if (!searchAddonRef.current || !currentSearchQueryRef.current) {
+          return false;
+        }
+        const opts = currentSearchOptionsRef.current;
+        return searchAddonRef.current.findNext(currentSearchQueryRef.current, {
+          caseSensitive: opts.caseSensitive,
+          wholeWord: opts.wholeWord,
+          regex: opts.regex,
+          incremental: false,
+        });
+      },
+      searchPrevious: () => {
+        if (!searchAddonRef.current || !currentSearchQueryRef.current) {
+          return false;
+        }
+        const opts = currentSearchOptionsRef.current;
+        return searchAddonRef.current.findPrevious(currentSearchQueryRef.current, {
+          caseSensitive: opts.caseSensitive,
+          wholeWord: opts.wholeWord,
+          regex: opts.regex,
+          incremental: false,
+        });
+      },
+      clearSearch: () => {
+        searchAddonRef.current?.clearDecorations();
+        currentSearchQueryRef.current = "";
+      },
+      focus: () => {
+        xtermRef.current?.focus();
+      },
+    }),
+    []
+  );
 
   // Update terminal background when opacity changes
   useEffect(() => {
@@ -214,7 +219,22 @@ const XTerminal = forwardRef<XTerminalHandle, XTerminalProps>(function XTerminal
     });
 
     const fitAddon = new FitAddon();
-    const webLinksAddon = new WebLinksAddon();
+    // Configure WebLinksAddon with custom handler for cmd+click
+    // The handler receives (event, uri) and is called when a link is clicked
+    const webLinksAddon = new WebLinksAddon((event: MouseEvent, uri: string) => {
+      // For cmd+click, open in system browser
+      if (event.metaKey || event.ctrlKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        console.log("[WebLinks] Opening URL in system browser:", uri);
+        openUrl(uri).catch((error) => {
+          console.error("[WebLinks] Failed to open URL:", error);
+        });
+        return;
+      }
+      // For regular clicks, let the default behavior happen (WebLinksAddon will open in new tab)
+      // We don't need to do anything here, WebLinksAddon handles it
+    });
     const searchAddon = new SearchAddon();
 
     terminal.loadAddon(fitAddon);
