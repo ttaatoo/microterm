@@ -202,6 +202,18 @@ export async function isShortcutRegistered(shortcut: string): Promise<boolean> {
   return isRegistered(shortcut);
 }
 
+// Open URL in system default browser
+export async function openUrl(url: string): Promise<void> {
+  if (!isTauri()) {
+    // Fallback for browser environment
+    window.open(url, "_blank");
+    return;
+  }
+
+  const { open } = await import("@tauri-apps/plugin-shell");
+  await open(url);
+}
+
 // Register a local shortcut that only works when the app window is focused
 // Used for shortcuts like Ctrl+Tab that are intercepted by the webview
 export async function registerLocalShortcut(

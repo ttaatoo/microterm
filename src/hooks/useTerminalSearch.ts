@@ -53,7 +53,7 @@ export function useTerminalSearch({ getActiveTerminal, disabled = false }: UseTe
     }
   }, [disabled, searchOpen, getActiveTerminal]);
 
-  // Listen for Cmd+F to open search
+  // Listen for Cmd+F to open search and Escape to close
   useEffect(() => {
     if (disabled) return;
 
@@ -61,12 +61,16 @@ export function useTerminalSearch({ getActiveTerminal, disabled = false }: UseTe
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         e.preventDefault();
         setSearchOpen(true);
+      } else if (e.key === "Escape" && searchOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSearchClose();
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [disabled]);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [disabled, searchOpen, handleSearchClose]);
 
   return {
     searchOpen,
