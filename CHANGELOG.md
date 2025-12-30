@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3](https://github.com/ttaatoo/microterm/compare/v1.2.2...v1.2.3) (2025-12-30)
+
+
+### Bug Fixes
+
+* **release:** add 'v' prefix to release PR title pattern ([7c7af28](https://github.com/ttaatoo/microterm/commit/7c7af2836a650c4d8eb9e4b78170219be6f1f0e5))
+* update copyright year to 2025 ([#8](https://github.com/ttaatoo/microterm/issues/8)) ([0905f59](https://github.com/ttaatoo/microterm/commit/0905f5990cba8c76b76dea6ce4e28a97e83ca05b))
+
 ## [1.2.2](https://github.com/ttaatoo/microterm/compare/v1.2.1...v1.2.2) (2025-12-29)
 
 
