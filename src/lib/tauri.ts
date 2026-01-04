@@ -14,21 +14,32 @@ function isTauri(): boolean {
   return "__TAURI__" in window;
 }
 
-// Dynamic imports to avoid issues when not in Tauri environment
+// Cached module references to avoid repeated dynamic imports
+let cachedInvoke: typeof import("@tauri-apps/api/core").invoke | null = null;
+let cachedListen: typeof import("@tauri-apps/api/event").listen | null = null;
+let cachedEmit: typeof import("@tauri-apps/api/event").emit | null = null;
+
+// Dynamic imports with caching to avoid repeated module loading
 async function getInvoke() {
   if (!isTauri()) {
     throw new Error("Not running in Tauri environment");
   }
-  const { invoke } = await import("@tauri-apps/api/core");
-  return invoke;
+  if (!cachedInvoke) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    cachedInvoke = invoke;
+  }
+  return cachedInvoke;
 }
 
 async function getListen() {
   if (!isTauri()) {
     throw new Error("Not running in Tauri environment");
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen;
+  if (!cachedListen) {
+    const { listen } = await import("@tauri-apps/api/event");
+    cachedListen = listen;
+  }
+  return cachedListen;
 }
 
 export async function executeCommand(
@@ -145,8 +156,11 @@ async function getEmit() {
   if (!isTauri()) {
     throw new Error("Not running in Tauri environment");
   }
-  const { emit } = await import("@tauri-apps/api/event");
-  return emit;
+  if (!cachedEmit) {
+    const { emit } = await import("@tauri-apps/api/event");
+    cachedEmit = emit;
+  }
+  return cachedEmit;
 }
 
 export async function registerGlobalShortcut(

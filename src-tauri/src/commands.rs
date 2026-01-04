@@ -2,8 +2,12 @@
 //!
 //! Provides synchronous and streaming command execution capabilities.
 
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::process::Stdio;
+use std::sync::LazyLock;
+use std::time::{Duration, Instant};
 use tauri::{command, AppHandle, Emitter, Manager};
 use tokio::io::AsyncReadExt;
 use tokio::io::BufReader as TokioBufReader;
@@ -34,6 +38,32 @@ const FORBIDDEN_COMMAND_CHARS: &[char] = &[
     ';', '&', '|', '$', '`', '(', ')', '{', '}', '[', ']', '<', '>', '\n', '\r', '\0', '\'', '"',
     '\\',
 ];
+
+/// Time-to-live for command completion cache (60 seconds)
+const COMPLETION_CACHE_TTL: Duration = Duration::from_secs(60);
+
+/// Cached executable commands for tab completion
+struct CompletionCache {
+    commands: HashSet<String>,
+    last_updated: Instant,
+}
+
+impl CompletionCache {
+    fn new() -> Self {
+        Self {
+            commands: HashSet::new(),
+            last_updated: Instant::now() - COMPLETION_CACHE_TTL, // Expired on creation
+        }
+    }
+
+    fn is_expired(&self) -> bool {
+        self.last_updated.elapsed() > COMPLETION_CACHE_TTL
+    }
+}
+
+/// Global completion cache with RwLock for concurrent access
+static COMPLETION_CACHE: LazyLock<RwLock<CompletionCache>> =
+    LazyLock::new(|| RwLock::new(CompletionCache::new()));
 
 /// Validate a command string for security
 fn validate_command(cmd: &str) -> Result<(), String> {
@@ -259,47 +289,42 @@ pub async fn execute_command_stream(
     Ok(exit_code.code().unwrap_or(0))
 }
 
-#[command]
-pub async fn complete_command(prefix: String) -> Result<Vec<String>, String> {
+/// Refresh the completion cache by scanning PATH directories
+fn refresh_completion_cache() {
     use std::env;
 
-    let mut completions = Vec::new();
+    let mut commands = HashSet::new();
 
-    // If prefix is empty, return empty list
-    if prefix.is_empty() {
-        return Ok(completions);
+    // Add built-in commands first
+    for cmd in BUILTIN_COMMANDS {
+        commands.insert((*cmd).to_string());
     }
 
     // Get PATH environment variable
     let path_var = env::var("PATH").unwrap_or_default();
-    let paths: Vec<&str> = path_var.split(':').collect();
 
-    for path_str in paths {
+    for path_str in path_var.split(':') {
         if let Ok(entries) = std::fs::read_dir(path_str) {
             for entry in entries.flatten() {
                 if let Some(name) = entry.file_name().to_str() {
-                    if name.starts_with(&prefix) {
-                        // Check if it's executable
-                        let path = entry.path();
-                        if path.is_file() {
-                            #[cfg(unix)]
-                            {
-                                use std::os::unix::fs::PermissionsExt;
-                                if let Ok(metadata) = entry.metadata() {
-                                    let mode = metadata.permissions().mode();
-                                    if mode & 0o111 != 0 {
-                                        // Executable
-                                        completions.push(name.to_string());
-                                    }
+                    // Check if it's executable
+                    let path = entry.path();
+                    if path.is_file() {
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::PermissionsExt;
+                            if let Ok(metadata) = entry.metadata() {
+                                let mode = metadata.permissions().mode();
+                                if mode & 0o111 != 0 {
+                                    commands.insert(name.to_string());
                                 }
                             }
-                            #[cfg(not(unix))]
-                            {
-                                // On Windows, check file extension
-                                if let Some(ext) = path.extension() {
-                                    if ext == "exe" || ext == "bat" || ext == "cmd" {
-                                        completions.push(name.to_string());
-                                    }
+                        }
+                        #[cfg(not(unix))]
+                        {
+                            if let Some(ext) = path.extension() {
+                                if ext == "exe" || ext == "bat" || ext == "cmd" {
+                                    commands.insert(name.to_string());
                                 }
                             }
                         }
@@ -309,16 +334,38 @@ pub async fn complete_command(prefix: String) -> Result<Vec<String>, String> {
         }
     }
 
-    // Also check common shell built-in commands
-    for cmd in BUILTIN_COMMANDS {
-        if cmd.starts_with(&prefix) && !completions.contains(&(*cmd).to_string()) {
-            completions.push((*cmd).to_string());
+    // Update the cache
+    let mut cache = COMPLETION_CACHE.write();
+    cache.commands = commands;
+    cache.last_updated = Instant::now();
+}
+
+#[command]
+pub async fn complete_command(prefix: String) -> Result<Vec<String>, String> {
+    // If prefix is empty, return empty list
+    if prefix.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Check if cache needs refresh (use read lock first for better concurrency)
+    {
+        let cache = COMPLETION_CACHE.read();
+        if cache.is_expired() {
+            drop(cache); // Release read lock before acquiring write lock
+            refresh_completion_cache();
         }
     }
 
-    completions.sort();
-    completions.dedup();
+    // Filter completions from cache
+    let cache = COMPLETION_CACHE.read();
+    let mut completions: Vec<String> = cache
+        .commands
+        .iter()
+        .filter(|cmd| cmd.starts_with(&prefix))
+        .cloned()
+        .collect();
 
+    completions.sort();
     Ok(completions)
 }
 

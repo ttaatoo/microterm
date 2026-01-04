@@ -17,6 +17,8 @@ const MIN_PTY_ROWS: u16 = 5;
 const MAX_PTY_COLS: u16 = 500;
 /// Maximum allowed PTY rows
 const MAX_PTY_ROWS: u16 = 200;
+/// PTY read buffer size (8KB for better throughput)
+const PTY_READ_BUFFER_SIZE: usize = 8192;
 
 /// Validate PTY dimensions
 fn validate_pty_size(cols: u16, rows: u16) -> Result<(), String> {
@@ -182,12 +184,16 @@ impl PtyManager {
         // Spawn a thread to read output from PTY and emit events
         // NOTE: We spawn the thread BEFORE inserting into HashMap to avoid leaking
         // orphaned sessions if thread spawn fails
-        let session_id_clone = session_id.clone();
+        // Use Arc<str> to avoid cloning session_id on every emit
+        let session_id_arc: Arc<str> = session_id.clone().into();
+        let session_id_for_thread = session_id_arc.clone();
+        let session_id_for_cleanup = session_id.clone();
         let app_clone = app.clone();
         let sessions_clone = self.sessions.clone();
 
         let reader_thread = thread::spawn(move || {
-            let mut buffer = [0u8; 4096];
+            // Use larger buffer for better throughput
+            let mut buffer = [0u8; PTY_READ_BUFFER_SIZE];
             loop {
                 // Check if shutdown was requested
                 if shutdown_flag_clone.load(Ordering::SeqCst) {
@@ -204,7 +210,7 @@ impl PtyManager {
                         let _ = app_clone.emit(
                             "pty-output",
                             PtyOutput {
-                                session_id: session_id_clone.clone(),
+                                session_id: session_id_for_thread.to_string(),
                                 data,
                             },
                         );
@@ -212,7 +218,7 @@ impl PtyManager {
                     Err(e) => {
                         // Don't log error if shutdown was requested
                         if !shutdown_flag_clone.load(Ordering::SeqCst) {
-                            error!(session_id = %session_id_clone, error = %e, "PTY read error");
+                            error!(session_id = %session_id_for_thread, error = %e, "PTY read error");
                         }
                         break;
                     }
@@ -238,14 +244,14 @@ impl PtyManager {
             let _ = app_clone.emit(
                 "pty-exit",
                 PtyExit {
-                    session_id: session_id_clone.clone(),
+                    session_id: session_id_for_thread.to_string(),
                     exit_code,
                 },
             );
 
             // Remove session from map
             let mut sessions = sessions_clone.lock();
-            sessions.remove(&session_id_clone);
+            sessions.remove(&session_id_for_cleanup);
         });
 
         // Store the thread handle FIRST (before inserting into HashMap)

@@ -20,10 +20,14 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 
 /**
  * Extract directory name from full path
  * Returns the last component of the path (directory name)
+ * Optimized to avoid array allocation
  */
 function extractDirName(path: string): string {
-  const parts = path.split("/").filter(Boolean);
-  return parts[parts.length - 1] || "/";
+  if (!path || path === "/") return "/";
+  // Remove trailing slash if present
+  const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
+  const lastSlash = cleanPath.lastIndexOf("/");
+  return lastSlash === -1 ? cleanPath : cleanPath.slice(lastSlash + 1) || "/";
 }
 
 // Base theme colors (One Dark Pro)
@@ -193,9 +197,11 @@ const XTerminal = forwardRef<XTerminalHandle, XTerminalProps>(function XTerminal
     if (!terminalRef.current || initializedRef.current) return;
     initializedRef.current = true;
 
-    // Import Tauri APIs dynamically
-    const { invoke } = await import("@tauri-apps/api/core");
-    const { listen } = await import("@tauri-apps/api/event");
+    // Import Tauri APIs dynamically in parallel for faster startup
+    const [{ invoke }, { listen }] = await Promise.all([
+      import("@tauri-apps/api/core"),
+      import("@tauri-apps/api/event"),
+    ]);
 
     // Load saved settings for initial opacity and font size
     const settings = loadSettings();
@@ -215,7 +221,9 @@ const XTerminal = forwardRef<XTerminalHandle, XTerminalProps>(function XTerminal
         background: `rgba(0, 0, 0, ${initialOpacity})`,
       },
       allowTransparency: true,
-      scrollback: 10000,
+      scrollback: 5000,
+      fastScrollSensitivity: 10,
+      smoothScrollDuration: 125,
     });
 
     const fitAddon = new FitAddon();
@@ -570,11 +578,16 @@ const XTerminal = forwardRef<XTerminalHandle, XTerminalProps>(function XTerminal
     return () => clearInterval(intervalId);
   }, [isVisible, onTitleChange]);
 
+  // Memoize click handler to avoid creating new function on each render
+  const handleContainerClick = useCallback(() => {
+    xtermRef.current?.focus();
+  }, []);
+
   return (
     <div
       ref={terminalRef}
       className={`xterminal-container ${isVisible ? "terminal-visible" : "terminal-hidden"}`}
-      onClick={() => xtermRef.current?.focus()}
+      onClick={handleContainerClick}
     />
   );
 });

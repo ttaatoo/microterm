@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 
@@ -116,16 +117,20 @@ export function TabProvider({ children }: { children: ReactNode }) {
 
   const canCloseTab = tabs.length > 1;
 
-  const value: TabContextValue = {
-    tabs,
-    activeTabId,
-    createTab,
-    closeTab,
-    setActiveTab,
-    updateTabSessionId,
-    updateTabTitle,
-    canCloseTab,
-  };
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value = useMemo<TabContextValue>(
+    () => ({
+      tabs,
+      activeTabId,
+      createTab,
+      closeTab,
+      setActiveTab,
+      updateTabSessionId,
+      updateTabTitle,
+      canCloseTab,
+    }),
+    [tabs, activeTabId, createTab, closeTab, setActiveTab, updateTabSessionId, updateTabTitle, canCloseTab]
+  );
 
   return <TabContext.Provider value={value}>{children}</TabContext.Provider>;
 }

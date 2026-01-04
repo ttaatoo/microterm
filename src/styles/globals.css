@@ -53,11 +53,10 @@ body {
   height: 100%;
   background: transparent;
   overflow: hidden;
-}
-
-/* Apply padding via xterm's internal structure */
-.xterminal-container .xterm {
+  /* Padding applied to container, not .xterm element.
+     This prevents FitAddon dimension calculation issues. */
   padding: 16px;
+  box-sizing: border-box;
 }
 
 /* Settings button in tab bar */

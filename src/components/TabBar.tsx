@@ -1,9 +1,54 @@
-import { useTabContext } from "@/contexts/TabContext";
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useTabContext, type Tab } from "@/contexts/TabContext";
+import { memo, useCallback, useEffect, useRef, type ReactNode } from "react";
 
 interface TabBarProps {
   settingsButton?: ReactNode;
 }
+
+interface TabItemProps {
+  tab: Tab;
+  isActive: boolean;
+  canClose: boolean;
+  onSelect: (tabId: string) => void;
+  onClose: (tabId: string) => void;
+}
+
+// Memoized individual tab component to prevent re-renders when other tabs change
+const TabItem = memo(function TabItem({
+  tab,
+  isActive,
+  canClose,
+  onSelect,
+  onClose,
+}: TabItemProps) {
+  const handleClick = useCallback(() => {
+    onSelect(tab.id);
+  }, [onSelect, tab.id]);
+
+  const handleClose = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onClose(tab.id);
+    },
+    [onClose, tab.id]
+  );
+
+  return (
+    <div
+      className={`tab ${isActive ? "tab-active" : ""}`}
+      onClick={handleClick}
+    >
+      <span className="tab-title">
+        {tab.number}: {tab.title}
+      </span>
+      {canClose && (
+        <button className="tab-close" onClick={handleClose} title="Close tab">
+          ×
+        </button>
+      )}
+    </div>
+  );
+});
 
 export default function TabBar({ settingsButton }: TabBarProps) {
   const { tabs, activeTabId, createTab, closeTab, setActiveTab, canCloseTab } =
@@ -84,25 +129,14 @@ export default function TabBar({ settingsButton }: TabBarProps) {
         onWheel={handleWheel}
       >
         {tabs.map((tab) => (
-          <div
+          <TabItem
             key={tab.id}
-            className={`tab ${tab.id === activeTabId ? "tab-active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <span className="tab-title">{tab.number}: {tab.title}</span>
-            {canCloseTab && (
-              <button
-                className="tab-close"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeTab(tab.id);
-                }}
-                title="Close tab"
-              >
-                ×
-              </button>
-            )}
-          </div>
+            tab={tab}
+            isActive={tab.id === activeTabId}
+            canClose={canCloseTab}
+            onSelect={setActiveTab}
+            onClose={closeTab}
+          />
         ))}
       </div>
       <button className="tab-add" onClick={createTab} title="New tab (⌘T)">
