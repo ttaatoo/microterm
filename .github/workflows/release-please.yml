@@ -23,62 +23,6 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  build-and-release:
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: macos-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build frontend
-        run: bun run build
-
-      - name: Build Tauri app
-        run: |
-          cd src-tauri
-          cargo build --release
-          cd ..
-          # Create DMG using tauri bundler
-          bunx tauri build --bundles dmg
-
-      - name: Upload assets to GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="${{ needs.release-please.outputs.version }}"
-          TAG="${{ needs.release-please.outputs.tag_name }}"
-
-          # Upload original DMG
-          ORIGINAL_DMG="src-tauri/target/release/bundle/dmg/µTerm_${VERSION}_aarch64.dmg"
-          if [ -f "$ORIGINAL_DMG" ]; then
-            gh release upload "$TAG" "$ORIGINAL_DMG" --clobber
-          fi
-
-          # Create and upload renamed DMG for Homebrew
-          RENAMED_DMG="src-tauri/target/release/bundle/dmg/microterm_${VERSION}_aarch64.dmg"
-          if [ -f "$ORIGINAL_DMG" ]; then
-            cp "$ORIGINAL_DMG" "$RENAMED_DMG"
-            gh release upload "$TAG" "$RENAMED_DMG" --clobber
-          fi
-
   # Automatic recovery: fix stuck release PRs
   fix-stuck-releases:
     runs-on: ubuntu-latest
@@ -100,7 +44,7 @@ jobs:
           for PR_NUM in $STUCK_PRS; do
             echo "Checking PR #$PR_NUM..."
 
-            # Get the version from PR title (format: "chore: release vX.Y.Z" or "chore: release X.Y.Z")
+            # Get the version from PR title (format: "chore: release vX.Y.Z")
             PR_TITLE=$(gh pr view $PR_NUM --repo ${{ github.repository }} --json title --jq '.title')
             VERSION=$(echo "$PR_TITLE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 
