@@ -249,110 +249,35 @@ BREAKING CHANGE: drop support for macOS 13 and earlier
 
 ## Release Workflow (Automated)
 
-This project uses [Release Please](https://github.com/googleapis/release-please) for automated versioning and releases.
+See [docs/RELEASE_AUTOMATION.md](docs/RELEASE_AUTOMATION.md) for full documentation.
 
-### How It Works
-
-1. **Write Conventional Commits** - Use `feat:`, `fix:`, etc. in your commit messages
-2. **Merge to main** - Release Please analyzes commits and creates/updates a Release PR
-3. **Merge Release PR** - Triggers automatic build and GitHub Release creation
-
-### Automatic Version Bumping
-
-Release Please determines version bumps based on commit types:
-
-| Commit Type | Version Bump | Example |
-|-------------|--------------|---------|
-| `feat:` | MINOR (0.x.0) | `feat: add tab completion` |
-| `fix:` | PATCH (0.0.x) | `fix: resolve crash on startup` |
-| `feat!:` or `BREAKING CHANGE:` | MAJOR (x.0.0) | `feat!: redesign settings API` |
-
-### Files Updated Automatically
-
-Release Please updates these files when a release is created:
-
-- `package.json` - npm version
-- `src-tauri/tauri.conf.json` - Tauri app version
-- `src-tauri/Cargo.toml` - Rust crate version
-- `CHANGELOG.md` - Generated from commit messages
-
-### Release PR
-
-When you push commits to `main`, Release Please will:
-
-1. Create or update a PR titled `chore: release x.y.z`
-2. The PR contains version bumps and CHANGELOG updates
-3. Merge when ready to release
-
-### Build and Publish
-
-After merging the Release PR:
-
-1. Release Please creates the git tag and GitHub Release
-2. GitHub Actions builds the Tauri app on macOS
-3. Uploads DMG installer (both original and ASCII-renamed for Homebrew)
-
-### Automatic Recovery
-
-The workflow includes automatic recovery for stuck release PRs:
-
-- **Problem**: Sometimes Release Please merges a PR but doesn't update the label from `autorelease: pending` to `autorelease: tagged`
-- **Solution**: The `fix-stuck-releases` job runs on every push and automatically fixes any stuck PRs by checking if the corresponding tag exists
-
-### Manual Steps After Release
-
-The only manual step remaining is updating the Homebrew tap:
+### Quick Reference
 
 ```bash
-# Get SHA256 from the release assets
-curl -sL "https://github.com/ttaatoo/microterm/releases/download/v<version>/microterm_<version>_aarch64.dmg" | shasum -a 256
-
-# Update homebrew-microterm/Casks/microterm.rb with new version and SHA256
-git -C ~/Github/homebrew-microterm commit -am "feat: bump to v<version>"
-git -C ~/Github/homebrew-microterm push
+# Normal release - just push to main
+git commit -m "feat: new feature"
+git push origin main
+# → Release Please creates PR → Merge PR → Auto build & publish
 ```
 
-**Homebrew tap repository:** https://github.com/ttaatoo/homebrew-microterm
+### Key Components
 
-### GitHub Actions Permissions (Required Setup)
+| Component | File | Purpose |
+|-----------|------|---------|
+| Pre-commit | `.husky/pre-commit` | Lint & format check before commit |
+| Release Please | `.github/workflows/release-please.yml` | Create release PR |
+| Build on Tag | `.github/workflows/build-on-tag.yml` | Build DMG on tag push |
+| Config | `release-please-config.json` | Release Please settings |
 
-For Release Please to create PRs automatically, enable this permission in GitHub:
+### Version Bumping
 
-1. Go to **Settings** → **Actions** → **General**
-2. Scroll to **Workflow permissions**
-3. Check **Allow GitHub Actions to create and approve pull requests**
-4. Click **Save**
+| Commit Type | Version Bump |
+|-------------|--------------|
+| `feat:` | MINOR (0.x.0) |
+| `fix:` | PATCH (0.0.x) |
+| `feat!:` | MAJOR (x.0.0) |
 
-URL: `https://github.com/ttaatoo/microterm/settings/actions`
+### Homebrew Auto-Update
 
-### Configuration Files
-
-- `release-please-config.json` - Release Please configuration
-- `.release-please-manifest.json` - Current version tracking
-- `.github/workflows/release-please.yml` - GitHub Actions workflow
-
-### Verify Release
-
-```bash
-# Check release assets
-gh release view v<version> --json assets --jq '.assets[].name'
-
-# Expected output includes:
-# - µTerm_<version>_aarch64.dmg (original)
-# - microterm_<version>_aarch64.dmg (ASCII for Homebrew)
-```
-
-### Manual Release (Emergency)
-
-If you need to manually trigger a release:
-
-```bash
-# Build locally
-bun run tauri build
-
-# Create release manually
-gh release create v<version> \
-  --title "µTerm v<version>" \
-  --generate-notes \
-  "src-tauri/target/release/bundle/dmg/µTerm_<version>_aarch64.dmg"
-```
+Set `TAP_GITHUB_TOKEN` secret for automatic Homebrew tap updates.
+Otherwise, manual update is required after release.
