@@ -203,6 +203,7 @@ const XTerminal = forwardRef<XTerminalHandle, XTerminalProps>(function XTerminal
       },
       allowTransparency: true,
       scrollback: 5000,
+      scrollOnUserInput: false,
       fastScrollSensitivity: 10,
       smoothScrollDuration: 125,
     });
