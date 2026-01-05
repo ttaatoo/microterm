@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.4](https://github.com/ttaatoo/microterm/compare/v1.2.3...v1.2.4) (2026-01-05)
+
+
+### Performance
+
+* optimize frontend and backend performance ([d947f8c](https://github.com/ttaatoo/microterm/commit/d947f8c926241524bc30bdf1adec7ce776872625))
+
+
+### Documentation
+
+* add AGENTS.md for Codex agent instructions ([2a619ea](https://github.com/ttaatoo/microterm/commit/2a619ea62f84fb38dab7ed843793bd94ee631464))
+
 ## [1.2.3](https://github.com/ttaatoo/microterm/compare/v1.2.2...v1.2.3) (2025-12-30)
 
 
