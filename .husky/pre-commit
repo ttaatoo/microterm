@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Frontend lint
+bun run lint
+
+# Rust format check
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
