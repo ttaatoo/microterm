@@ -656,8 +656,9 @@ pub fn run() {
                 pinned: bool,
             }
 
-            app.listen("pin-state-changed", move |event| {
-                match serde_json::from_str::<PinStatePayload>(event.payload()) {
+            app.listen(
+                "pin-state-changed",
+                move |event| match serde_json::from_str::<PinStatePayload>(event.payload()) {
                     Ok(payload) => {
                         #[cfg(target_os = "macos")]
                         {
@@ -668,8 +669,8 @@ pub fn run() {
                     Err(e) => {
                         error!("Failed to parse pin-state-changed payload: {}", e);
                     }
-                }
-            });
+                },
+            );
 
             // Also emit an event when window is toggled so frontend can track state
             let _ = app.emit("window-ready", ());

@@ -32,7 +32,7 @@ bun run lint
 
 ## Architecture Overview
 
-macOS menubar terminal application built with **Tauri 2.0** (Rust backend) and **Vite + React** (frontend).
+macOS menubar terminal application built with **Tauri 2.0** (Rust backend) and **Vite + React 19** (frontend).
 
 ### Frontend-Backend Communication
 
@@ -56,8 +56,9 @@ Frontend wrapper `src/lib/tauri.ts` provides typed functions with dynamic import
 
 - Uses `objc2`/`objc2-app-kit` for native macOS APIs (not `cocoa`)
 - `configure_panel_behavior` sets floating window level, space behavior
-- Global click monitor hides window on outside click
+- Global click monitor hides window on outside click (unless pinned)
 - `MouseButtonState::Up` for tray click (matches native macOS behavior)
+- Pin state management: `set_window_pinned()` / `is_window_pinned()` prevents auto-hide
 
 **commands.rs** - Legacy simple command execution (less used now that PTY exists)
 
@@ -71,14 +72,40 @@ Permissions in `src-tauri/capabilities/default.json`:
 
 ### Key Frontend Components
 
-- `src/components/XTerminal.tsx` - Main terminal UI with xterm.js, PTY integration, double-ESC to hide
+- `src/components/XTerminal.tsx` - Main terminal UI with xterm.js, PTY integration
 - `src/lib/tauri.ts` - Typed IPC wrapper with dynamic imports
-- `src/lib/settings.ts` - Persisted settings (opacity, font size) in localStorage
+- `src/lib/settings.ts` - Persisted settings (opacity, font size, pinned) in localStorage
+- `src/lib/constants.ts` - Centralized timing constants
+- `src/lib/guards.ts` - Runtime type guards for event payloads
+- `src/lib/pin.ts` - Pin state utilities for global shortcuts
+
+### Custom Hooks (src/hooks/)
+
+| Hook | Purpose |
+|------|---------|
+| `usePtySession` | PTY session lifecycle management (create, write, resize, close) |
+| `usePinState` | Pin state management across components and Rust backend |
+| `useDoubleEsc` | Double-ESC detection to hide window (vim-like behavior) |
+| `useTerminalFocus` | Terminal focus management across window events |
+| `useCwdPolling` | Poll current working directory for tab title updates |
+| `useXTermSearch` | xterm.js search addon functionality |
+| `useSettings` | React hook for settings with localStorage persistence |
+| `useTabShortcuts` | Keyboard shortcuts for tab management |
+
+### Styling
+
+Uses **Vanilla Extract** for type-safe CSS-in-TypeScript:
+
+- Component styles: `src/components/*.css.ts`
+- Global styles: `src/styles/global.css.ts`
+- Animations: `src/styles/animations.css.ts`
+- xterm overrides: `src/styles/xterm-overrides.css`
 
 ### Vite Configuration
 
 - **Dev**: `devUrl: http://localhost:3000` in tauri.conf.json
 - **Prod**: Static build to `./dist/`, loaded via `frontendDist: ../dist`
+- **Path alias**: `@` maps to `./src` for clean imports
 
 ## Troubleshooting
 

@@ -19,15 +19,10 @@ Built with **Rust**, **Tauri 2.0**, and **Vite + React**.
 
 - 🎯 **Menubar Access** - Always one click away from your terminal
 - ⚡ **Lightning Fast** - Native Rust backend with minimal memory footprint
-- 🖥️ **Full PTY Support** - Real terminal emulation with xterm.js
 - 📑 **Multi-Tab Support** - Open multiple terminal sessions with keyboard shortcuts
 - 🖥️ **Multi-Monitor** - Window appears on the screen where your cursor is
-- 📂 **Smart Tab Titles** - Tabs show current working directory (like Warp)
-- 🎨 **Beautiful UI** - One Dark Pro theme with adjustable transparency
-- ⚙️ **Customizable** - Adjust opacity, font size, window size, and keyboard shortcuts
-- 🔗 **Clickable Links** - URLs are automatically detected and clickable
-- 🪟 **Smart Window** - Click outside to dismiss, resizable, works across all spaces
-- 📌 **Pin Window** - Pin the terminal to keep it visible even when losing focus (perfect for multi-monitor setups)
+- 📂 **Smart Tab Titles** - Tabs show current working directory
+- 📌 **Pin Window** - Keep terminal visible even when losing focus
 - ⌨️ **Global Shortcut** - Configurable hotkey to toggle terminal (default: ⌘⇧T)
 
 ## Installation
@@ -124,28 +119,20 @@ bun run lint
 
 ```
 microterm/
-├── src/                    # Vite + React frontend
-│   ├── components/        # React components
-│   │   ├── XTerminal.tsx  # Terminal UI with xterm.js
-│   │   ├── TabBar.tsx     # Tab bar with multi-tab support
-│   │   ├── SettingsPanel.tsx  # Settings overlay
-│   │   ├── ResizeHandle.tsx   # Window resize control
-│   │   └── ErrorBoundary.tsx  # Error handling
-│   ├── contexts/          # React contexts
-│   │   └── TabContext.tsx # Tab state management
-│   ├── hooks/             # Custom hooks
-│   │   └── useTabShortcuts.ts # Keyboard shortcuts
-│   ├── lib/               # Utilities & settings
-│   └── styles/            # CSS styles
-├── src-tauri/             # Rust backend
+├── src/                       # Vite + React frontend
+│   ├── components/            # React components (XTerminal, TabBar, SettingsPanel, etc.)
+│   ├── contexts/              # React contexts (TabContext)
+│   ├── features/terminal/     # Terminal view & styles
+│   ├── hooks/                 # Custom hooks (useTabShortcuts, usePtySession, etc.)
+│   ├── lib/                   # Utilities (tauri IPC, settings, pin state)
+│   └── styles/                # Global styles
+├── src-tauri/                 # Rust backend
 │   ├── src/
-│   │   ├── lib.rs         # Window & tray behavior, multi-monitor
-│   │   ├── commands.rs    # Shell command execution
-│   │   ├── pty.rs         # PTY session management, CWD tracking
-│   │   └── pty_commands.rs
-│   └── capabilities/      # Tauri permissions
-├── .github/workflows/     # CI/CD
-└── docs/                  # Documentation
+│   │   ├── lib.rs             # Window & tray behavior, multi-monitor
+│   │   ├── pty.rs             # PTY session management
+│   │   └── pty_commands.rs    # PTY Tauri commands
+│   └── capabilities/          # Tauri permissions
+└── .github/workflows/         # CI/CD
 ```
 
 ## Contributing
