@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1](https://github.com/ttaatoo/microterm/compare/v1.3.0...v1.3.1) (2026-01-05)
+
+
+### Bug Fixes
+
+* **release:** remove broken pull-request-title-pattern config ([fc6338b](https://github.com/ttaatoo/microterm/commit/fc6338b458861dbb186c008fc4dbe827f90b0a7b))
+* **terminal:** add scrollOnUserInput option to XTerminal ([1b2437e](https://github.com/ttaatoo/microterm/commit/1b2437e9ef58a4ce3c0045c8c8ea4828a2ae88e2))
+
+
+### Documentation
+
+* add release automation documentation ([e57f50f](https://github.com/ttaatoo/microterm/commit/e57f50f5514567933f687360403029ef42188208))
+
 ## [1.3.0](https://github.com/ttaatoo/microterm/compare/v1.2.5...v1.3.0) (2026-01-05)
 
 
