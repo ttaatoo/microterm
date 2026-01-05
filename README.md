@@ -46,7 +46,7 @@ Download the latest `.dmg` from the [Releases](https://github.com/ttaatoo/microt
 
 #### Prerequisites
 
-- **Rust** (1.70+) - Install from [rustup.rs](https://rustup.rs/)
+- **Rust** (1.92+) - Install from [rustup.rs](https://rustup.rs/)
 - **Bun** (latest) - Install from [bun.sh](https://bun.sh/)
 - **macOS 10.13+**
 
