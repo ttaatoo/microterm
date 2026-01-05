@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/ttaatoo/microterm/compare/v1.2.5...v1.3.0) (2026-01-05)
+
+
+### Features
+
+* **tabs:** add tooltip on tab hover ([7304db8](https://github.com/ttaatoo/microterm/commit/7304db88eceb60a8529890487253535261a5f951))
+* **window:** add pin window feature to keep terminal visible ([7397a31](https://github.com/ttaatoo/microterm/commit/7397a3158dcf9f4b47ad7c8ab9df149b9d2dcfe6))
+
+
+### Code Refactoring
+
+* **pin:** improve pin state handling with type-safe parsing ([2a3868e](https://github.com/ttaatoo/microterm/commit/2a3868e06ebef9cd73f380edb232dde2da1c5468))
+* **styles:** migrate CSS to vanilla-extract ([4bce32f](https://github.com/ttaatoo/microterm/commit/4bce32faab1d0bf9392042e5236af7af823a0158))
+* **terminal:** extract XTerminal logic to custom hooks ([1a4efef](https://github.com/ttaatoo/microterm/commit/1a4efefff2288e7c5f61c6791c536ad06a6f4f9c))
+
+
+### Documentation
+
+* simplify README features and update project structure ([8b779f5](https://github.com/ttaatoo/microterm/commit/8b779f5e294c874c772d2c001cd4cf443a4cc38d))
+
 ## [1.2.5](https://github.com/ttaatoo/microterm/compare/v1.2.4...v1.2.5) (2026-01-05)
 
 
