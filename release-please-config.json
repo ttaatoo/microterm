@@ -3,7 +3,6 @@
   "release-type": "node",
   "packages": {
     ".": {
-      "component": "microterm",
       "changelog-path": "CHANGELOG.md",
       "include-component-in-tag": false,
       "extra-files": [
