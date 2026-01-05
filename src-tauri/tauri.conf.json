@@ -1,6 +1,6 @@
 {
   "productName": "µTerm",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "identifier": "com.microterm.app",
   "build": {
     "beforeDevCommand": "bun run dev",
