@@ -12,6 +12,7 @@ export interface Tab {
   title: string;
   number: number;
   sessionId: string | null;
+  titleManuallySet?: boolean;
 }
 
 interface TabContextValue {
@@ -21,7 +22,7 @@ interface TabContextValue {
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
   updateTabSessionId: (tabId: string, sessionId: string) => void;
-  updateTabTitle: (tabId: string, title: string) => void;
+  updateTabTitle: (tabId: string, title: string, manuallySet?: boolean) => void;
   canCloseTab: boolean;
 }
 
@@ -107,12 +108,20 @@ export function TabProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const updateTabTitle = useCallback((tabId: string, title: string) => {
-    setTabs((prev) =>
-      prev.map((tab) =>
-        tab.id === tabId ? { ...tab, title } : tab
-      )
-    );
+  const updateTabTitle = useCallback((tabId: string, title: string, manuallySet = false) => {
+    setTabs((prev) => {
+      // If manuallySet is false (terminal update), check if title was manually set
+      if (!manuallySet) {
+        const targetTab = prev.find((tab) => tab.id === tabId);
+        if (targetTab?.titleManuallySet) {
+          return prev; // Don't update if title was manually set
+        }
+      }
+      const newTabs = prev.map((tab) =>
+        tab.id === tabId ? { ...tab, title, titleManuallySet: manuallySet ? true : tab.titleManuallySet } : tab
+      );
+      return newTabs;
+    });
   }, []);
 
   const canCloseTab = tabs.length > 1;

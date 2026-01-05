@@ -1,7 +1,7 @@
 import { PinIcon } from "@/components/icons";
 import { useTabContext, type Tab } from "@/contexts/TabContext";
 import { usePinState } from "@/hooks/usePinState";
-import { memo, useCallback, useEffect, useRef, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 interface TabBarProps {
   settingsButton?: ReactNode;
@@ -13,6 +13,7 @@ interface TabItemProps {
   canClose: boolean;
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
+  onRename: (tabId: string, newTitle: string, manuallySet?: boolean) => void;
 }
 
 // Memoized individual tab component to prevent re-renders when other tabs change
@@ -22,10 +23,22 @@ const TabItem = memo(function TabItem({
   canClose,
   onSelect,
   onClose,
+  onRename,
 }: TabItemProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingValue, setEditingValue] = useState(tab.title);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const inputRef = useRef<HTMLInputElement>(null);
+  const tabRef = useRef<HTMLDivElement>(null);
+  const isEditingRef = useRef(false);
+  const justRenamedRef = useRef(false);
+
   const handleClick = useCallback(() => {
-    onSelect(tab.id);
-  }, [onSelect, tab.id]);
+    if (!isEditing) {
+      onSelect(tab.id);
+    }
+  }, [onSelect, tab.id, isEditing]);
 
   const handleClose = useCallback(
     (e: React.MouseEvent) => {
@@ -35,11 +48,147 @@ const TabItem = memo(function TabItem({
     [onClose, tab.id]
   );
 
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      isEditingRef.current = true;
+      setIsEditing(true);
+      setEditingValue(tab.title);
+    },
+    [tab.title]
+  );
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditingValue(e.target.value);
+  }, []);
+
+  const handleInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        const trimmedValue = editingValue.trim();
+        if (trimmedValue) {
+          justRenamedRef.current = true;
+          isEditingRef.current = false;
+          setIsEditing(false);
+          onRename(tab.id, trimmedValue, true);
+        } else {
+          isEditingRef.current = false;
+          setIsEditing(false);
+          setEditingValue(tab.title);
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        isEditingRef.current = false;
+        setIsEditing(false);
+        setEditingValue(tab.title);
+      }
+    },
+    [editingValue, tab.id, tab.title, onRename]
+  );
+
+  const handleInputBlur = useCallback(() => {
+    const trimmedValue = editingValue.trim();
+    isEditingRef.current = false;
+    setIsEditing(false);
+    if (trimmedValue && trimmedValue !== tab.title) {
+      onRename(tab.id, trimmedValue, true);
+    } else {
+      setEditingValue(tab.title);
+    }
+  }, [editingValue, tab.id, tab.title, onRename]);
+
+  // Focus and select text when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  // Update editing value when tab title changes externally (only when not editing)
+  useEffect(() => {
+    if (!isEditingRef.current) {
+      // If we just renamed, don't sync - the title is already correct
+      if (justRenamedRef.current) {
+        justRenamedRef.current = false;
+        return;
+      }
+      setEditingValue(tab.title);
+    }
+  }, [tab.title]);
+
+  // Show tooltip on hover
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleTabMouseEnter = useCallback(() => {
+    if (isEditing || !tabRef.current) return;
+
+    // Small delay to avoid flickering on quick mouse movements
+    tooltipTimeoutRef.current = setTimeout(() => {
+      if (tabRef.current) {
+        const rect = tabRef.current.getBoundingClientRect();
+        setTooltipPosition({
+          top: rect.bottom + 8, // Position below the tab
+          left: rect.left + rect.width / 2,
+        });
+        setShowTooltip(true);
+      }
+    }, 200);
+  }, [isEditing]);
+
+  const handleTabMouseLeave = useCallback(() => {
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current);
+      tooltipTimeoutRef.current = null;
+    }
+    setShowTooltip(false);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <div className={`tab ${isActive ? "tab-active" : ""}`} onClick={handleClick}>
-      <span className="tab-title">
+    <div
+      ref={tabRef}
+      className={`tab ${isActive ? "tab-active" : ""}`}
+      onClick={handleClick}
+      onMouseEnter={handleTabMouseEnter}
+      onMouseLeave={handleTabMouseLeave}
+    >
+      <span className="tab-title" onDoubleClick={handleDoubleClick}>
         {tab.number}: {tab.title}
       </span>
+      {showTooltip && !isEditing && (
+        <div
+          className="tab-tooltip"
+          style={{
+            top: `${tooltipPosition.top}px`,
+            left: `${tooltipPosition.left}px`,
+          }}
+        >
+          {tab.number}: {tab.title}
+        </div>
+      )}
+      {isEditing && (
+        <input
+          ref={inputRef}
+          className="tab-title-input"
+          value={editingValue}
+          onChange={handleInputChange}
+          onKeyDown={handleInputKeyDown}
+          onBlur={handleInputBlur}
+          onClick={(e) => e.stopPropagation()}
+        />
+      )}
       {canClose && (
         <button className="tab-close" onClick={handleClose} title="Close tab">
           ×
@@ -50,7 +199,8 @@ const TabItem = memo(function TabItem({
 });
 
 export default function TabBar({ settingsButton }: TabBarProps) {
-  const { tabs, activeTabId, createTab, closeTab, setActiveTab, canCloseTab } = useTabContext();
+  const { tabs, activeTabId, createTab, closeTab, setActiveTab, updateTabTitle, canCloseTab } =
+    useTabContext();
   const { pinned, togglePin } = usePinState();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const prevTabCountRef = useRef(tabs.length);
@@ -120,7 +270,6 @@ export default function TabBar({ settingsButton }: TabBarProps) {
     }, 150);
   }, []);
 
-
   return (
     <div className="tab-bar">
       <div className="tabs-container" ref={tabsContainerRef} onWheel={handleWheel}>
@@ -132,6 +281,7 @@ export default function TabBar({ settingsButton }: TabBarProps) {
             canClose={canCloseTab}
             onSelect={setActiveTab}
             onClose={closeTab}
+            onRename={updateTabTitle}
           />
         ))}
       </div>

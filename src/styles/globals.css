@@ -703,6 +703,86 @@ body {
   color: rgba(255, 255, 255, 0.9);
 }
 
+.tab:has(.tab-title-input) .tab-title {
+  opacity: 0;
+}
+
+.tab-tooltip {
+  position: fixed;
+  transform: translateX(-50%);
+  background: rgba(75, 75, 80, 0.95);
+  color: rgba(255, 255, 255, 0.95);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 10000;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: tooltipFadeIn 0.15s ease;
+}
+
+.tab-tooltip::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid rgba(75, 75, 80, 0.95);
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+  .tab-title-input {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    outline: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    width: calc(100% - 28px);
+    z-index: 1;
+    line-height: 1;
+    height: auto;
+    transition: color 0.15s ease;
+  }
+  
+  .tab-active .tab-title-input {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .tab-title-input:focus {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+.tab-title-input::selection {
+  background: rgba(168, 85, 247, 0.35);
+  color: rgba(255, 255, 255, 1);
+}
+
 .tab-close {
   width: 16px;
   height: 16px;

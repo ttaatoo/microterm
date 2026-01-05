@@ -1,21 +1,20 @@
-import { useRef, useCallback } from "react";
-import {
-  MIN_WINDOW_WIDTH,
-  MIN_WINDOW_HEIGHT,
-  MAX_WINDOW_WIDTH,
-  MAX_WINDOW_HEIGHT,
-} from "@/lib/settings";
-import { ToastContainer } from "@/components/Toast";
-import { useTabContext } from "@/contexts/TabContext";
-import { useTabShortcuts, useToast, useSettings, useTerminalSearch } from "@/hooks";
 import { GearIcon } from "@/components/icons";
-import XTerminal, { type XTerminalHandle } from "@/components/XTerminal";
-import SearchBar from "@/components/SearchBar";
-import ResizeHandle from "@/components/ResizeHandle";
-import SettingsPanel from "@/components/SettingsPanel";
 import Onboarding from "@/components/Onboarding";
+import ResizeHandle from "@/components/ResizeHandle";
+import SearchBar from "@/components/SearchBar";
+import SettingsPanel from "@/components/SettingsPanel";
 import TabBar from "@/components/TabBar";
-import { useState } from "react";
+import { ToastContainer } from "@/components/Toast";
+import XTerminal, { type XTerminalHandle } from "@/components/XTerminal";
+import { useTabContext } from "@/contexts/TabContext";
+import { useSettings, useTabShortcuts, useTerminalSearch, useToast } from "@/hooks";
+import {
+  MAX_WINDOW_HEIGHT,
+  MAX_WINDOW_WIDTH,
+  MIN_WINDOW_HEIGHT,
+  MIN_WINDOW_WIDTH,
+} from "@/lib/settings";
+import { useCallback, useRef, useState } from "react";
 
 export function TerminalView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -95,7 +94,11 @@ export function TerminalView() {
             opacity={opacity}
             fontSize={fontSize}
             onSessionCreated={(sessionId) => updateTabSessionId(tab.id, sessionId)}
-            onTitleChange={(title) => updateTabTitle(tab.id, title)}
+            onTitleChange={(title) => {
+              // Always call updateTabTitle - it will check titleManuallySet internally
+              // This avoids race conditions with stale tab object references
+              updateTabTitle(tab.id, title);
+            }}
           />
         ))}
       </div>
