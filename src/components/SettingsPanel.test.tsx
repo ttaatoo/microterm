@@ -73,16 +73,18 @@ describe("SettingsPanel", () => {
 
     it("should call onClose when overlay is clicked", async () => {
       await renderSettingsPanel(true);
+      const overlay = screen.getByTestId("settings-overlay");
       await act(async () => {
-        fireEvent.click(screen.getByText("Settings").closest(".settings-overlay")!);
+        fireEvent.click(overlay);
       });
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
     it("should not call onClose when panel content is clicked", async () => {
       await renderSettingsPanel(true);
+      const panel = screen.getByTestId("settings-panel");
       await act(async () => {
-        fireEvent.click(screen.getByText("Settings").closest(".settings-panel")!);
+        fireEvent.click(panel);
       });
       expect(mockOnClose).not.toHaveBeenCalled();
     });

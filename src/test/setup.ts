@@ -1,6 +1,17 @@
 import "@testing-library/jest-dom/vitest";
 import { vi, beforeEach } from "vitest";
 
+// Mock Vanilla Extract CSS modules
+// These are build-time only and don't work in test environment
+vi.mock("@vanilla-extract/css", () => ({
+  style: () => "mocked-style",
+  globalStyle: () => undefined,
+  keyframes: () => "mocked-keyframes",
+  styleVariants: () => ({}),
+  createTheme: () => ["mocked-theme", {}],
+  createThemeContract: () => ({}),
+}));
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
