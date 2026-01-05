@@ -650,15 +650,23 @@ pub fn run() {
             });
 
             // Listen for pin-state-changed event from frontend
+            // Define payload struct for type-safe deserialization
+            #[derive(serde::Deserialize)]
+            struct PinStatePayload {
+                pinned: bool,
+            }
+
             app.listen("pin-state-changed", move |event| {
-                // In Tauri 2.0, payload() returns &str directly
-                if let Ok(value) = serde_json::from_str::<serde_json::Value>(event.payload()) {
-                    if let Some(pinned) = value.get("pinned").and_then(|v| v.as_bool()) {
+                match serde_json::from_str::<PinStatePayload>(event.payload()) {
+                    Ok(payload) => {
                         #[cfg(target_os = "macos")]
                         {
-                            macos::set_window_pinned(pinned);
-                            info!("Window pin state changed: {}", pinned);
+                            macos::set_window_pinned(payload.pinned);
+                            info!("Window pin state changed: {}", payload.pinned);
                         }
+                    }
+                    Err(e) => {
+                        error!("Failed to parse pin-state-changed payload: {}", e);
                     }
                 }
             });

@@ -1,18 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { loadSettings, saveSettings, type Settings } from "@/lib/settings";
-
-interface PinStatePayload {
-  pinned: boolean;
-}
-
-function isPinStatePayload(payload: unknown): payload is PinStatePayload {
-  return (
-    typeof payload === "object" &&
-    payload !== null &&
-    "pinned" in payload &&
-    typeof (payload as PinStatePayload).pinned === "boolean"
-  );
-}
+import { isPinStatePayload, type PinStatePayload } from "@/lib/guards";
 
 /**
  * Custom hook for managing pin state across the application.
@@ -71,7 +59,8 @@ export function usePinState() {
   // Toggle pin state and sync everywhere
   const togglePin = useCallback(async () => {
     const settings = loadSettings();
-    const newPinned = !settings.pinned;
+    const oldPinned = settings.pinned ?? false;
+    const newPinned = !oldPinned;
 
     // Update local state immediately for responsive UI
     setPinned(newPinned);
@@ -85,22 +74,23 @@ export function usePinState() {
       const { emit } = await import("@tauri-apps/api/event");
       // Single event to Rust backend
       await emit("pin-state-changed", { pinned: newPinned });
-      // Single event to frontend components (H2 fix - consolidated emission)
+      // Single event to frontend components
       await emit("pin-state-updated", { pinned: newPinned });
     } catch (error) {
       console.error("[Pin] Failed to sync pin state:", error);
-      // Revert local state on failure (M2 fix - error handling)
-      setPinned(!newPinned);
-      saveSettings({ ...settings, pinned: !newPinned });
+      // Revert to original state on failure
+      setPinned(oldPinned);
+      saveSettings({ ...settings, pinned: oldPinned });
     }
   }, []);
 
   // Set pin state to a specific value (for Cmd+W unpin scenario)
   const setPin = useCallback(async (newPinned: boolean) => {
     const settings = loadSettings();
+    const oldPinned = settings.pinned ?? false;
 
     // Skip if already in desired state
-    if (settings.pinned === newPinned) return;
+    if (oldPinned === newPinned) return;
 
     // Update local state
     setPinned(newPinned);
@@ -116,9 +106,9 @@ export function usePinState() {
       await emit("pin-state-updated", { pinned: newPinned });
     } catch (error) {
       console.error("[Pin] Failed to set pin state:", error);
-      // Revert on failure
-      setPinned(!newPinned);
-      saveSettings({ ...settings, pinned: !newPinned });
+      // Revert to original state on failure
+      setPinned(oldPinned);
+      saveSettings({ ...settings, pinned: oldPinned });
     }
   }, []);
 

@@ -19,7 +19,8 @@ async function syncPinState(pinned: boolean): Promise<void> {
  */
 export async function togglePinState(): Promise<void> {
   const settings = loadSettings();
-  const newPinned = !settings.pinned;
+  const oldPinned = settings.pinned ?? false;
+  const newPinned = !oldPinned;
 
   // Save to settings
   const newSettings: Settings = { ...settings, pinned: newPinned };
@@ -30,8 +31,8 @@ export async function togglePinState(): Promise<void> {
     await syncPinState(newPinned);
   } catch (error) {
     console.error("[Pin] Failed to toggle pin state:", error);
-    // Revert on failure (M2 fix - error recovery)
-    saveSettings({ ...settings, pinned: !newPinned });
+    // Revert to original state on failure
+    saveSettings({ ...settings, pinned: oldPinned });
   }
 }
 
