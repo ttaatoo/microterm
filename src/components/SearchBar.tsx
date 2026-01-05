@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import * as styles from "./SearchBar.css";
 
 interface SearchBarProps {
   isOpen: boolean;
@@ -72,13 +73,13 @@ export default function SearchBar({
   if (!isOpen) return null;
 
   return (
-    <div className="search-bar-overlay">
-      <div className="search-bar">
-        <div className="search-input-container">
+    <div className={styles.searchBarOverlay}>
+      <div className={styles.searchBar}>
+        <div className={styles.searchInputContainer}>
           <input
             ref={inputRef}
             type="text"
-            className="search-input"
+            className={styles.searchInput}
             placeholder="Find"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -86,33 +87,33 @@ export default function SearchBar({
           />
         </div>
 
-        <div className="search-options">
+        <div className={styles.searchOptions}>
           <button
-            className={`search-option-btn ${options.regex ? "active" : ""}`}
+            className={`${styles.searchOptionBtn} ${options.regex ? styles.searchOptionBtnActive : ""}`}
             onClick={() => toggleOption("regex")}
             title="Use Regular Expression"
           >
             .*
           </button>
           <button
-            className={`search-option-btn ${options.caseSensitive ? "active" : ""}`}
+            className={`${styles.searchOptionBtn} ${options.caseSensitive ? styles.searchOptionBtnActive : ""}`}
             onClick={() => toggleOption("caseSensitive")}
             title="Match Case"
           >
             Aa
           </button>
           <button
-            className={`search-option-btn ${options.wholeWord ? "active" : ""}`}
+            className={`${styles.searchOptionBtn} ${options.wholeWord ? styles.searchOptionBtnActive : ""}`}
             onClick={() => toggleOption("wholeWord")}
             title="Match Whole Word"
           >
-            <span className="whole-word-icon">[⎵]</span>
+            <span className={styles.wholeWordIcon}>[⎵]</span>
           </button>
         </div>
 
-        <div className="search-nav">
+        <div className={styles.searchNav}>
           <button
-            className="search-nav-btn"
+            className={styles.searchNavBtn}
             onClick={onSearchNext}
             title="Next Match (Enter)"
             disabled={!query}
@@ -120,7 +121,7 @@ export default function SearchBar({
             ↓
           </button>
           <button
-            className="search-nav-btn"
+            className={styles.searchNavBtn}
             onClick={onSearchPrevious}
             title="Previous Match (Shift+Enter)"
             disabled={!query}
@@ -129,7 +130,7 @@ export default function SearchBar({
           </button>
         </div>
 
-        <button className="search-close-btn" onClick={onClose} title="Close (Esc)">
+        <button className={styles.searchCloseBtn} onClick={onClose} title="Close (Esc)">
           ×
         </button>
       </div>

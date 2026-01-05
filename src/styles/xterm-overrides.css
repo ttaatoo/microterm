@@ -1,0 +1,28 @@
+/* XTerm overrides - these target xterm.js internal DOM structure */
+/* Keep as CSS file since they target third-party library DOM */
+
+/* Apply padding via xterm's internal structure */
+.xterminal-container .xterm {
+  padding: 16px;
+}
+
+/* Hide default scrollbar, only show xterm's */
+.xterminal-container .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.xterminal-container .xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 10px 0;
+}
+
+.xterminal-container .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(75, 82, 99, 0.6);
+  border-radius: 4px;
+}
+
+.xterminal-container .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(92, 99, 112, 0.8);
+}
+

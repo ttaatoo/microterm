@@ -1,3 +1,5 @@
+import * as styles from "./Onboarding.css";
+
 interface OnboardingProps {
   onComplete: () => void;
 }
@@ -48,57 +50,57 @@ function GearIcon() {
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
   return (
-    <div className="onboarding-overlay" onClick={onComplete}>
-      <div className="onboarding-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="onboarding-header">
-          <h2 className="onboarding-title">Welcome to µTerm</h2>
-          <p className="onboarding-subtitle">A lightweight menubar terminal</p>
+    <div className={styles.onboardingOverlay} onClick={onComplete}>
+      <div className={styles.onboardingPanel} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.onboardingHeader}>
+          <h2 className={styles.onboardingTitle}>Welcome to µTerm</h2>
+          <p className={styles.onboardingSubtitle}>A lightweight menubar terminal</p>
         </div>
 
-        <div className="onboarding-content">
-          <div className="onboarding-item">
-            <div className="onboarding-icon">
+        <div className={styles.onboardingContent}>
+          <div className={styles.onboardingItem}>
+            <div className={styles.onboardingIcon}>
               <TerminalIcon />
             </div>
-            <div className="onboarding-text">
+            <div className={styles.onboardingText}>
               <h4>Quick Access</h4>
               <p>Click the menubar icon to toggle the terminal window.</p>
             </div>
           </div>
 
-          <div className="onboarding-item">
-            <div className="onboarding-icon">
+          <div className={styles.onboardingItem}>
+            <div className={styles.onboardingIcon}>
               <KeyboardIcon />
             </div>
-            <div className="onboarding-text">
+            <div className={styles.onboardingText}>
               <h4>Global Shortcut</h4>
-              <p>Press <kbd className="onboarding-kbd">⌘⇧T</kbd> anywhere to toggle the terminal.</p>
+              <p>Press <kbd className={styles.onboardingKbd}>⌘⇧T</kbd> anywhere to toggle the terminal.</p>
             </div>
           </div>
 
-          <div className="onboarding-item">
-            <div className="onboarding-icon">
+          <div className={styles.onboardingItem}>
+            <div className={styles.onboardingIcon}>
               <EscapeIcon />
             </div>
-            <div className="onboarding-text">
+            <div className={styles.onboardingText}>
               <h4>Hide Window</h4>
-              <p>Double-tap <kbd className="onboarding-kbd">ESC</kbd> to quickly hide the window.</p>
+              <p>Double-tap <kbd className={styles.onboardingKbd}>ESC</kbd> to quickly hide the window.</p>
             </div>
           </div>
 
-          <div className="onboarding-item">
-            <div className="onboarding-icon">
+          <div className={styles.onboardingItem}>
+            <div className={styles.onboardingIcon}>
               <GearIcon />
             </div>
-            <div className="onboarding-text">
+            <div className={styles.onboardingText}>
               <h4>Customize</h4>
               <p>Click the gear icon to adjust opacity, font size, and shortcuts.</p>
             </div>
           </div>
         </div>
 
-        <div className="onboarding-footer">
-          <button className="onboarding-button" onClick={onComplete}>
+        <div className={styles.onboardingFooter}>
+          <button className={styles.onboardingButton} onClick={onComplete}>
             Get Started
           </button>
         </div>

@@ -2,6 +2,7 @@ import { PinIcon } from "@/components/icons";
 import { useTabContext, type Tab } from "@/contexts/TabContext";
 import { usePinState } from "@/hooks/usePinState";
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import * as styles from "./TabBar.css";
 
 interface TabBarProps {
   settingsButton?: ReactNode;
@@ -15,6 +16,10 @@ interface TabItemProps {
   onClose: (tabId: string) => void;
   onRename: (tabId: string, newTitle: string, manuallySet?: boolean) => void;
 }
+
+// Constants
+const MAX_TAB_TITLE_LENGTH = 50;
+const TOOLTIP_DELAY_MS = 200;
 
 // Memoized individual tab component to prevent re-renders when other tabs change
 const TabItem = memo(function TabItem({
@@ -33,6 +38,7 @@ const TabItem = memo(function TabItem({
   const tabRef = useRef<HTMLDivElement>(null);
   const isEditingRef = useRef(false);
   const justRenamedRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const handleClick = useCallback(() => {
     if (!isEditing) {
@@ -67,7 +73,14 @@ const TabItem = memo(function TabItem({
       if (e.key === "Enter") {
         e.preventDefault();
         e.stopPropagation();
-        const trimmedValue = editingValue.trim();
+        // Validate and sanitize tab title
+        let trimmedValue = editingValue.trim();
+        // Remove control characters
+        trimmedValue = trimmedValue.replace(/[\x00-\x1F\x7F]/g, "");
+        // Limit length
+        if (trimmedValue.length > MAX_TAB_TITLE_LENGTH) {
+          trimmedValue = trimmedValue.slice(0, MAX_TAB_TITLE_LENGTH);
+        }
         if (trimmedValue) {
           justRenamedRef.current = true;
           isEditingRef.current = false;
@@ -128,7 +141,8 @@ const TabItem = memo(function TabItem({
 
     // Small delay to avoid flickering on quick mouse movements
     tooltipTimeoutRef.current = setTimeout(() => {
-      if (tabRef.current) {
+      // Check if component is still mounted and ref is valid
+      if (tabRef.current && isMountedRef.current) {
         const rect = tabRef.current.getBoundingClientRect();
         setTooltipPosition({
           top: rect.bottom + 8, // Position below the tab
@@ -136,7 +150,7 @@ const TabItem = memo(function TabItem({
         });
         setShowTooltip(true);
       }
-    }, 200);
+    }, TOOLTIP_DELAY_MS);
   }, [isEditing]);
 
   const handleTabMouseLeave = useCallback(() => {
@@ -147,9 +161,10 @@ const TabItem = memo(function TabItem({
     setShowTooltip(false);
   }, []);
 
-  // Cleanup timeout on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       if (tooltipTimeoutRef.current) {
         clearTimeout(tooltipTimeoutRef.current);
       }
@@ -159,17 +174,20 @@ const TabItem = memo(function TabItem({
   return (
     <div
       ref={tabRef}
-      className={`tab ${isActive ? "tab-active" : ""}`}
+      className={`${styles.tab} ${isActive ? styles.tabActive : ""}`}
       onClick={handleClick}
       onMouseEnter={handleTabMouseEnter}
       onMouseLeave={handleTabMouseLeave}
     >
-      <span className="tab-title" onDoubleClick={handleDoubleClick}>
+      <span
+        className={`${styles.tabTitle} ${isEditing ? styles.tabTitleHidden : ""}`}
+        onDoubleClick={handleDoubleClick}
+      >
         {tab.number}: {tab.title}
       </span>
       {showTooltip && !isEditing && (
         <div
-          className="tab-tooltip"
+          className={styles.tabTooltip}
           style={{
             top: `${tooltipPosition.top}px`,
             left: `${tooltipPosition.left}px`,
@@ -181,7 +199,7 @@ const TabItem = memo(function TabItem({
       {isEditing && (
         <input
           ref={inputRef}
-          className="tab-title-input"
+          className={styles.tabTitleInput}
           value={editingValue}
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
@@ -190,7 +208,7 @@ const TabItem = memo(function TabItem({
         />
       )}
       {canClose && (
-        <button className="tab-close" onClick={handleClose} title="Close tab">
+        <button className={styles.tabClose} onClick={handleClose} title="Close tab">
           ×
         </button>
       )}
@@ -271,8 +289,8 @@ export default function TabBar({ settingsButton }: TabBarProps) {
   }, []);
 
   return (
-    <div className="tab-bar">
-      <div className="tabs-container" ref={tabsContainerRef} onWheel={handleWheel}>
+    <div className={styles.tabBar}>
+      <div className={styles.tabsContainer} ref={tabsContainerRef} onWheel={handleWheel}>
         {tabs.map((tab) => (
           <TabItem
             key={tab.id}
@@ -285,11 +303,11 @@ export default function TabBar({ settingsButton }: TabBarProps) {
           />
         ))}
       </div>
-      <button className="tab-add" onClick={createTab} title="New tab (⌘T)">
+      <button className={styles.tabAdd} onClick={createTab} title="New tab (⌘T)">
         +
       </button>
       <button
-        className={`pin-button ${pinned ? "pinned" : ""}`}
+        className={`${styles.pinButton} ${pinned ? styles.pinButtonPinned : ""}`}
         onClick={togglePin}
         title={pinned ? "Unpin window (⌘`)" : "Pin window (⌘`)"}
       >

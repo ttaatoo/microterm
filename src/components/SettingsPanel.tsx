@@ -1,24 +1,23 @@
-import { useState, useEffect, useCallback } from "react";
 import {
-  loadSettings,
-  saveSettings,
-  clampOpacity,
   clampFontSize,
-  MIN_OPACITY,
+  clampOpacity,
+  DEFAULT_PIN_SHORTCUT,
+  DEFAULT_SHORTCUT,
+  loadSettings,
+  MAX_FONT_SIZE,
   MAX_OPACITY,
   MIN_FONT_SIZE,
-  MAX_FONT_SIZE,
-  DEFAULT_SHORTCUT,
-  DEFAULT_PIN_SHORTCUT,
+  MIN_OPACITY,
+  saveSettings,
   type Settings,
 } from "@/lib/settings";
+import { useCallback, useEffect, useState } from "react";
+import * as styles from "./SettingsPanel.css";
 
 // Autostart functions - dynamically imported to ensure Tauri runtime is available
 async function getAutostart() {
   if (!(window as Window & { __TAURI__?: unknown }).__TAURI__) return null;
-  const { enable, disable, isEnabled } = await import(
-    "@tauri-apps/plugin-autostart"
-  );
+  const { enable, disable, isEnabled } = await import("@tauri-apps/plugin-autostart");
   return { enable, disable, isEnabled };
 }
 
@@ -80,11 +79,7 @@ function formatShortcutDisplay(shortcut: string): string {
     .replace(/\+/g, " ");
 }
 
-export default function SettingsPanel({
-  isOpen,
-  onClose,
-  onSettingsChange,
-}: SettingsPanelProps) {
+export default function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPanelProps) {
   const [opacity, setOpacity] = useState(0.9);
   const [fontSize, setFontSize] = useState(13);
   const [shortcut, setShortcut] = useState(DEFAULT_SHORTCUT);
@@ -268,20 +263,20 @@ export default function SettingsPanel({
   if (!isOpen) return null;
 
   return (
-    <div className="settings-overlay" onClick={onClose}>
-      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="settings-header">
-          <span className="settings-title">Settings</span>
-          <button className="settings-close" onClick={onClose}>
+    <div className={styles.settingsOverlay} onClick={onClose} data-testid="settings-overlay">
+      <div className={styles.settingsPanel} onClick={(e) => e.stopPropagation()} data-testid="settings-panel">
+        <div className={styles.settingsHeader}>
+          <span className={styles.settingsTitle}>Settings</span>
+          <button className={styles.settingsClose} onClick={onClose}>
             ×
           </button>
         </div>
 
-        <div className="settings-content">
-          <div className="settings-item">
-            <label className="settings-label">
+        <div className={styles.settingsContent}>
+          <div className={styles.settingsItem}>
+            <label className={styles.settingsLabel}>
               Background Opacity
-              <span className="settings-value">{Math.round(opacity * 100)}%</span>
+              <span className={styles.settingsValue}>{Math.round(opacity * 100)}%</span>
             </label>
             <input
               type="range"
@@ -290,17 +285,15 @@ export default function SettingsPanel({
               step={0.05}
               value={opacity}
               onChange={handleOpacitySliderChange}
-              className="settings-slider"
+              className={styles.settingsSlider}
             />
-            <div className="settings-hint">
-              Adjust the terminal background transparency
-            </div>
+            <div className={styles.settingsHint}>Adjust the terminal background transparency</div>
           </div>
 
-          <div className="settings-item">
-            <label className="settings-label">
+          <div className={styles.settingsItem}>
+            <label className={styles.settingsLabel}>
               Font Size
-              <span className="settings-value">{fontSize}px</span>
+              <span className={styles.settingsValue}>{fontSize}px</span>
             </label>
             <input
               type="range"
@@ -309,90 +302,90 @@ export default function SettingsPanel({
               step={1}
               value={fontSize}
               onChange={handleFontSizeSliderChange}
-              className="settings-slider"
+              className={styles.settingsSlider}
             />
-            <div className="settings-hint">
+            <div className={styles.settingsHint}>
               Adjust the terminal font size ({MIN_FONT_SIZE}-{MAX_FONT_SIZE}px)
             </div>
           </div>
 
-          <div className="settings-divider" />
+          <div className={styles.settingsDivider} />
 
-          <div className="settings-item">
-            <label className="settings-label">
+          <div className={styles.settingsItem}>
+            <label className={styles.settingsLabel}>
               Global Shortcut
-              <label className="settings-toggle">
+              <label className={styles.settingsToggle}>
                 <input
                   type="checkbox"
                   checked={shortcutEnabled}
                   onChange={(e) => handleShortcutEnabledChange(e.target.checked)}
                 />
-                <span className="toggle-slider" />
+                <span className={styles.toggleSlider} />
               </label>
             </label>
-            <div className="shortcut-recorder">
+            <div className={styles.shortcutRecorder}>
               <button
-                className={`shortcut-button ${isRecording ? "recording" : ""}`}
+                className={`${styles.shortcutButton} ${
+                  isRecording ? styles.shortcutButtonRecording : ""
+                }`}
                 onClick={startRecording}
                 disabled={!shortcutEnabled}
               >
                 {isRecording ? (
-                  <span className="recording-text">Press keys...</span>
+                  <span className={styles.recordingText}>Press keys...</span>
                 ) : (
-                  <span className="shortcut-display">
-                    {formatShortcutDisplay(shortcut)}
-                  </span>
+                  <span className={styles.shortcutDisplay}>{formatShortcutDisplay(shortcut)}</span>
                 )}
               </button>
             </div>
-            <div className="settings-hint">
+            <div className={styles.settingsHint}>
               {shortcutEnabled
                 ? "Click to change the shortcut. Press ESC to cancel."
                 : "Enable to set a global shortcut for quick access"}
             </div>
           </div>
 
-          <div className="settings-divider" />
+          <div className={styles.settingsDivider} />
 
-          <div className="settings-item">
-            <label className="settings-label">
-              Pin Shortcut
-            </label>
-            <div className="shortcut-recorder">
+          <div className={styles.settingsItem}>
+            <label className={styles.settingsLabel}>Pin Shortcut</label>
+            <div className={styles.shortcutRecorder}>
               <button
-                className={`shortcut-button ${isRecordingPin ? "recording" : ""}`}
+                className={`${styles.shortcutButton} ${
+                  isRecordingPin ? styles.shortcutButtonRecording : ""
+                }`}
                 onClick={startRecordingPin}
               >
                 {isRecordingPin ? (
-                  <span className="recording-text">Press keys...</span>
+                  <span className={styles.recordingText}>Press keys...</span>
                 ) : (
-                  <span className="shortcut-display">
+                  <span className={styles.shortcutDisplay}>
                     {formatShortcutDisplay(pinShortcut)}
                   </span>
                 )}
               </button>
             </div>
-            <div className="settings-hint">
+            <div className={styles.settingsHint}>
               Click to change the shortcut for toggling pin state. Press ESC to cancel.
             </div>
           </div>
 
-          <div className="settings-divider" />
+          <div className={styles.settingsDivider} />
 
-          <div className="settings-item">
-            <label className="settings-label">
+          <div className={styles.settingsItem}>
+            <label className={styles.settingsLabel}>
               Launch at Login
-              <label className="settings-toggle">
+              <label className={styles.settingsToggle}>
                 <input
                   type="checkbox"
                   checked={launchAtLogin}
                   disabled={launchAtLoginLoading}
                   onChange={(e) => handleLaunchAtLoginChange(e.target.checked)}
                 />
-                <span className="toggle-slider" />
+                <span className={styles.toggleSlider} />
               </label>
             </label>
-            <div className="settings-hint">
+            <div className={styles.settingsHint}>
               Automatically start µTerm when you log in to your Mac
             </div>
           </div>

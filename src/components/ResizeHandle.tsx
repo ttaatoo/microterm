@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import * as styles from "./ResizeHandle.css";
 
 type ResizePosition = "bottom-left" | "bottom-right";
 
@@ -147,9 +148,11 @@ export default function ResizeHandle({
 
   const isLeft = position === "bottom-left";
 
+  const positionClass = position === "bottom-right" ? styles.resizeHandleBottomRight : styles.resizeHandleBottomLeft;
+
   return (
     <div
-      className={`resize-handle resize-handle-${position} ${isResizing ? "resize-handle-active" : ""}`}
+      className={`${styles.resizeHandle} ${positionClass}`}
       onMouseDown={handleMouseDown}
       title="Drag to resize"
     >

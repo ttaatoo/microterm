@@ -15,6 +15,7 @@ import {
   MIN_WINDOW_WIDTH,
 } from "@/lib/settings";
 import { useCallback, useRef, useState } from "react";
+import * as styles from "./styles.css";
 
 export function TerminalView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -63,13 +64,17 @@ export function TerminalView() {
       : undefined;
 
   const settingsButton = (
-    <button className="settings-button" onClick={() => setSettingsOpen(true)} title="Settings">
+    <button
+      className={styles.settingsButton}
+      onClick={() => setSettingsOpen(true)}
+      title="Settings"
+    >
       <GearIcon />
     </button>
   );
 
   return (
-    <main className="main-container" style={containerStyle}>
+    <main className={styles.mainContainer} style={containerStyle}>
       <TabBar settingsButton={settingsButton} />
       <SearchBar
         isOpen={searchOpen}
@@ -78,7 +83,7 @@ export function TerminalView() {
         onSearchNext={handleSearchNext}
         onSearchPrevious={handleSearchPrevious}
       />
-      <div className="terminal-area">
+      <div className={styles.terminalArea}>
         {tabs.map((tab) => (
           <XTerminal
             key={tab.id}

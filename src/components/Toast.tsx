@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import * as styles from "./Toast.css";
 
 export type ToastType = "info" | "success" | "warning" | "error";
 
@@ -22,16 +23,16 @@ export function Toast({ message, type = "info", duration = 3000, onClose }: Toas
   }, [duration, onClose]);
 
   const typeStyles: Record<ToastType, string> = {
-    info: "toast-info",
-    success: "toast-success",
-    warning: "toast-warning",
-    error: "toast-error",
+    info: styles.toastInfo,
+    success: styles.toastSuccess,
+    warning: styles.toastWarning,
+    error: styles.toastError,
   };
 
   return (
-    <div className={`toast ${typeStyles[type]} ${isVisible ? "toast-visible" : "toast-hidden"}`}>
-      <span className="toast-message">{message}</span>
-      <button className="toast-close" onClick={() => { setIsVisible(false); setTimeout(onClose, 200); }}>
+    <div className={`${styles.toast} ${typeStyles[type]} ${isVisible ? styles.toastVisible : styles.toastHidden}`}>
+      <span className={styles.toastMessage}>{message}</span>
+      <button className={styles.toastClose} onClick={() => { setIsVisible(false); setTimeout(onClose, 200); }}>
         ×
       </button>
     </div>
@@ -47,7 +48,7 @@ export function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="toast-container">
+    <div className={styles.toastContainer}>
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
