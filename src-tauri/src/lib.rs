@@ -44,6 +44,7 @@ pub mod macos {
         /// This ensures the window is not deallocated while we hold a reference
         window: Option<Retained<NSWindow>>,
         event_monitor: Option<Retained<AnyObject>>,
+        pinned: bool, // Pin state: if true, window won't auto-hide
     }
 
     impl WindowState {
@@ -51,6 +52,7 @@ pub mod macos {
             Self {
                 window: None,
                 event_monitor: None,
+                pinned: false,
             }
         }
     }
@@ -67,6 +69,14 @@ pub mod macos {
 
     pub fn is_window_visible_flag() -> bool {
         WINDOW_VISIBLE.load(Ordering::SeqCst)
+    }
+
+    pub fn is_window_pinned() -> bool {
+        WINDOW_STATE.read().pinned
+    }
+
+    pub fn set_window_pinned(pinned: bool) {
+        WINDOW_STATE.write().pinned = pinned;
     }
 
     /// Configure the window to behave like a menubar panel.
@@ -160,6 +170,11 @@ pub mod macos {
             return;
         }
 
+        // Check pin state: if pinned, don't handle external clicks
+        if is_window_pinned() {
+            return;
+        }
+
         // Access the window through the retained reference
         let state = WINDOW_STATE.read();
         let window = match &state.window {
@@ -189,7 +204,7 @@ pub mod macos {
             && mouse_location.y <= frame.origin.y + frame.size.height;
 
         if !inside {
-            // Hide window
+            // Hide window (only if not pinned)
             window.orderOut(None);
             // Release the read lock before setting visibility
             drop(state);
@@ -632,6 +647,20 @@ pub fn run() {
                         toggle_window(&window);
                     }
                 });
+            });
+
+            // Listen for pin-state-changed event from frontend
+            app.listen("pin-state-changed", move |event| {
+                // In Tauri 2.0, payload() returns &str directly
+                if let Ok(value) = serde_json::from_str::<serde_json::Value>(event.payload()) {
+                    if let Some(pinned) = value.get("pinned").and_then(|v| v.as_bool()) {
+                        #[cfg(target_os = "macos")]
+                        {
+                            macos::set_window_pinned(pinned);
+                            info!("Window pin state changed: {}", pinned);
+                        }
+                    }
+                }
             });
 
             // Also emit an event when window is toggled so frontend can track state

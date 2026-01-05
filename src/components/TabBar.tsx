@@ -1,4 +1,6 @@
+import { PinIcon } from "@/components/icons";
 import { useTabContext, type Tab } from "@/contexts/TabContext";
+import { usePinState } from "@/hooks/usePinState";
 import { memo, useCallback, useEffect, useRef, type ReactNode } from "react";
 
 interface TabBarProps {
@@ -34,10 +36,7 @@ const TabItem = memo(function TabItem({
   );
 
   return (
-    <div
-      className={`tab ${isActive ? "tab-active" : ""}`}
-      onClick={handleClick}
-    >
+    <div className={`tab ${isActive ? "tab-active" : ""}`} onClick={handleClick}>
       <span className="tab-title">
         {tab.number}: {tab.title}
       </span>
@@ -51,8 +50,8 @@ const TabItem = memo(function TabItem({
 });
 
 export default function TabBar({ settingsButton }: TabBarProps) {
-  const { tabs, activeTabId, createTab, closeTab, setActiveTab, canCloseTab } =
-    useTabContext();
+  const { tabs, activeTabId, createTab, closeTab, setActiveTab, canCloseTab } = useTabContext();
+  const { pinned, togglePin } = usePinState();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const prevTabCountRef = useRef(tabs.length);
   const isUserScrollingRef = useRef(false);
@@ -91,7 +90,7 @@ export default function TabBar({ settingsButton }: TabBarProps) {
 
     // Small delay to let the DOM update
     requestAnimationFrame(() => {
-      const activeTabElement = tabsContainerRef.current?.querySelector('.tab-active');
+      const activeTabElement = tabsContainerRef.current?.querySelector(".tab-active");
       if (activeTabElement) {
         scrollToElement(activeTabElement);
       }
@@ -121,13 +120,10 @@ export default function TabBar({ settingsButton }: TabBarProps) {
     }, 150);
   }, []);
 
+
   return (
     <div className="tab-bar">
-      <div
-        className="tabs-container"
-        ref={tabsContainerRef}
-        onWheel={handleWheel}
-      >
+      <div className="tabs-container" ref={tabsContainerRef} onWheel={handleWheel}>
         {tabs.map((tab) => (
           <TabItem
             key={tab.id}
@@ -141,6 +137,13 @@ export default function TabBar({ settingsButton }: TabBarProps) {
       </div>
       <button className="tab-add" onClick={createTab} title="New tab (⌘T)">
         +
+      </button>
+      <button
+        className={`pin-button ${pinned ? "pinned" : ""}`}
+        onClick={togglePin}
+        title={pinned ? "Unpin window (⌘`)" : "Pin window (⌘`)"}
+      >
+        <PinIcon />
       </button>
       {settingsButton}
     </div>

@@ -22,6 +22,8 @@ const MAX_FONT_SIZE = 24;
 // Global shortcut settings
 // Default: Cmd+Shift+T on macOS, Ctrl+Shift+T on other platforms
 const DEFAULT_SHORTCUT = "CommandOrControl+Shift+T";
+// Pin shortcut: Cmd+` on macOS, Ctrl+` on other platforms
+const DEFAULT_PIN_SHORTCUT = "CommandOrControl+Backquote";
 
 export interface WindowSize {
   width: number;
@@ -34,7 +36,9 @@ export interface Settings {
   fontSize?: number;
   globalShortcut?: string;
   shortcutEnabled?: boolean;
+  pinShortcut?: string; // Pin shortcut
   onboardingComplete?: boolean;
+  pinned?: boolean; // Window pin state
 }
 
 const defaultSettings: Settings = {
@@ -43,7 +47,9 @@ const defaultSettings: Settings = {
   fontSize: DEFAULT_FONT_SIZE,
   globalShortcut: DEFAULT_SHORTCUT,
   shortcutEnabled: true,
+  pinShortcut: DEFAULT_PIN_SHORTCUT,
   onboardingComplete: false,
+  pinned: false, // Default: not pinned
 };
 
 export function loadSettings(): Settings {
@@ -59,7 +65,9 @@ export function loadSettings(): Settings {
         fontSize: clampFontSize(parsed.fontSize ?? DEFAULT_FONT_SIZE),
         globalShortcut: parsed.globalShortcut ?? DEFAULT_SHORTCUT,
         shortcutEnabled: parsed.shortcutEnabled ?? true,
+        pinShortcut: parsed.pinShortcut ?? DEFAULT_PIN_SHORTCUT,
         onboardingComplete: parsed.onboardingComplete ?? false,
+        pinned: parsed.pinned ?? false,
       };
     }
   } catch (error) {
@@ -93,17 +101,18 @@ export function clampFontSize(value: number): number {
 }
 
 export {
-  DEFAULT_OPACITY,
-  MIN_OPACITY,
-  MAX_OPACITY,
-  DEFAULT_WINDOW_WIDTH,
-  DEFAULT_WINDOW_HEIGHT,
-  MIN_WINDOW_WIDTH,
-  MIN_WINDOW_HEIGHT,
-  MAX_WINDOW_WIDTH,
-  MAX_WINDOW_HEIGHT,
   DEFAULT_FONT_SIZE,
-  MIN_FONT_SIZE,
-  MAX_FONT_SIZE,
+  DEFAULT_OPACITY,
+  DEFAULT_PIN_SHORTCUT,
   DEFAULT_SHORTCUT,
+  DEFAULT_WINDOW_HEIGHT,
+  DEFAULT_WINDOW_WIDTH,
+  MAX_FONT_SIZE,
+  MAX_OPACITY,
+  MAX_WINDOW_HEIGHT,
+  MAX_WINDOW_WIDTH,
+  MIN_FONT_SIZE,
+  MIN_OPACITY,
+  MIN_WINDOW_HEIGHT,
+  MIN_WINDOW_WIDTH,
 };

@@ -625,6 +625,14 @@ mod tests {
 /// Hide the main window and update visibility state
 #[command]
 pub fn hide_window(app: AppHandle) -> Result<(), String> {
+    // Check pin state: if pinned, don't hide
+    #[cfg(target_os = "macos")]
+    {
+        if crate::macos::is_window_pinned() {
+            return Ok(());
+        }
+    }
+
     let window = app
         .get_webview_window("main")
         .ok_or("Main window not found")?;

@@ -3,12 +3,15 @@ import {
   loadSettings,
   saveSettings,
   DEFAULT_SHORTCUT,
+  DEFAULT_PIN_SHORTCUT,
   type Settings,
 } from "@/lib/settings";
 import {
   registerGlobalShortcut,
+  registerGlobalShortcutNoToggle,
   unregisterGlobalShortcut,
 } from "@/lib/tauri";
+import { togglePinState } from "@/lib/pin";
 
 interface UseSettingsOptions {
   onShortcutError?: (shortcut: string) => void;
@@ -21,6 +24,7 @@ export function useSettings(options: UseSettingsOptions = {}) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const settingsRef = useRef<Settings | null>(null);
   const currentShortcutRef = useRef<string | null>(null);
+  const currentPinShortcutRef = useRef<string | null>(null);
 
   // Initialize settings on mount
   useEffect(() => {
@@ -61,6 +65,17 @@ export function useSettings(options: UseSettingsOptions = {}) {
           onShortcutError?.(settings.globalShortcut);
         }
       }
+
+      // Register pin shortcut (without toggling window)
+      const pinShortcut = settings.pinShortcut ?? DEFAULT_PIN_SHORTCUT;
+      try {
+        await registerGlobalShortcutNoToggle(pinShortcut, async () => {
+          await togglePinState();
+        });
+        currentPinShortcutRef.current = pinShortcut;
+      } catch (error) {
+        console.error("Failed to register pin shortcut:", error);
+      }
     };
     initSettings();
 
@@ -68,6 +83,9 @@ export function useSettings(options: UseSettingsOptions = {}) {
     return () => {
       if (currentShortcutRef.current) {
         unregisterGlobalShortcut(currentShortcutRef.current).catch(console.error);
+      }
+      if (currentPinShortcutRef.current) {
+        unregisterGlobalShortcut(currentPinShortcutRef.current).catch(console.error);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,7 +96,7 @@ export function useSettings(options: UseSettingsOptions = {}) {
     setOpacity(settings.opacity);
     setFontSize(settings.fontSize);
 
-    // Handle shortcut changes
+    // Handle global shortcut changes
     const newShortcut = settings.globalShortcut ?? DEFAULT_SHORTCUT;
     const shortcutEnabled = settings.shortcutEnabled !== false;
 
@@ -103,6 +121,28 @@ export function useSettings(options: UseSettingsOptions = {}) {
       } catch (error) {
         console.error("Failed to register shortcut:", error);
         onShortcutError?.(newShortcut);
+      }
+    }
+
+    // Handle pin shortcut changes
+    const newPinShortcut = settings.pinShortcut ?? DEFAULT_PIN_SHORTCUT;
+    if (currentPinShortcutRef.current && currentPinShortcutRef.current !== newPinShortcut) {
+      try {
+        await unregisterGlobalShortcut(currentPinShortcutRef.current);
+        currentPinShortcutRef.current = null;
+      } catch (error) {
+        console.error("Failed to unregister pin shortcut:", error);
+      }
+    }
+
+    if (currentPinShortcutRef.current !== newPinShortcut) {
+      try {
+        await registerGlobalShortcutNoToggle(newPinShortcut, async () => {
+          await togglePinState();
+        });
+        currentPinShortcutRef.current = newPinShortcut;
+      } catch (error) {
+        console.error("Failed to register pin shortcut:", error);
       }
     }
   }, [onShortcutError]);

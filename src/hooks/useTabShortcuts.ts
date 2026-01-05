@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useTabContext } from "@/contexts/TabContext";
+import { loadSettings } from "@/lib/settings";
+import { togglePinState, setPinState } from "@/lib/pin";
 
 export function useTabShortcuts(disabled = false) {
   const { tabs, activeTabId, createTab, closeTab, setActiveTab, canCloseTab } =
@@ -127,18 +129,30 @@ export function useTabShortcuts(disabled = false) {
           createTab();
           break;
 
+        case "f4":
+          // Cmd+F4: Toggle pin state (fallback, global shortcut is preferred)
+          e.preventDefault();
+          await togglePinState();
+          break;
+
         case "w":
-          // Cmd+W: Close current tab, or hide window if last tab
+          // Cmd+W: Close current tab, or handle pin state if last tab
           e.preventDefault();
           if (canCloseTab) {
+            // Multiple tabs: close tab, pin state remains unchanged
             closeTab(activeTabId);
           } else {
-            // Last tab - hide window instead
-            try {
-              const { invoke } = await import("@tauri-apps/api/core");
-              await invoke("hide_window");
-            } catch (error) {
-              console.error("[Window] Failed to hide window:", error);
+            // Last tab: if pinned, unpin; otherwise hide window (M3 fix - extracted logic)
+            const currentSettings = loadSettings();
+            if (currentSettings.pinned) {
+              await setPinState(false);
+            } else {
+              try {
+                const { invoke } = await import("@tauri-apps/api/core");
+                await invoke("hide_window");
+              } catch (error) {
+                console.error("[Window] Failed to hide window:", error);
+              }
             }
           }
           break;

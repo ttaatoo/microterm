@@ -24,9 +24,10 @@ Built with **Rust**, **Tauri 2.0**, and **Vite + React**.
 - 🖥️ **Multi-Monitor** - Window appears on the screen where your cursor is
 - 📂 **Smart Tab Titles** - Tabs show current working directory (like Warp)
 - 🎨 **Beautiful UI** - One Dark Pro theme with adjustable transparency
-- ⚙️ **Customizable** - Adjust opacity, font size, and window size
+- ⚙️ **Customizable** - Adjust opacity, font size, window size, and keyboard shortcuts
 - 🔗 **Clickable Links** - URLs are automatically detected and clickable
 - 🪟 **Smart Window** - Click outside to dismiss, resizable, works across all spaces
+- 📌 **Pin Window** - Pin the terminal to keep it visible even when losing focus (perfect for multi-monitor setups)
 - ⌨️ **Global Shortcut** - Configurable hotkey to toggle terminal (default: ⌘⇧T)
 
 ## Installation
@@ -89,21 +90,23 @@ bun run lint
 1. **Open** - Click the menubar icon or press `⌘⇧T` (configurable)
 2. **Type** - Enter commands and press Enter to execute
 3. **Navigate** - Use Up/Down arrows to browse command history
-4. **Settings** - Click the gear icon (⚙) to adjust opacity, font size, and shortcuts
-5. **Resize** - Drag the bottom corners to resize the window
-6. **Close** - Click outside the window, press `ESC` twice, or click the icon again
+4. **Pin Window** - Click the pin button (📌) in the tab bar or press `⌘` (configurable) to pin/unpin the window. When pinned, the window stays visible even when clicking outside or losing focus
+5. **Settings** - Click the gear icon (⚙) to adjust opacity, font size, and shortcuts
+6. **Resize** - Drag the bottom corners to resize the window
+7. **Close** - Click outside the window, press `ESC` twice, or click the icon again (won't close if pinned)
 
 ### Keyboard Shortcuts
 
-| Shortcut  | Action                                        |
-| --------- | --------------------------------------------- |
-| `⌘⇧T`     | Toggle terminal window (global, configurable) |
-| `⌘T`      | New tab                                       |
-| `⌘W`      | Close current tab                             |
-| `⌘1-9`    | Switch to tab 1-9                             |
-| `⌘[`      | Previous tab                                  |
-| `⌘]`      | Next tab                                      |
-| `ESC ESC` | Hide window (double-tap)                      |
+| Shortcut  | Action                                               |
+| --------- | ---------------------------------------------------- |
+| `⌘⇧T`     | Toggle terminal window (global, configurable)        |
+| `⌘`       | Toggle pin state (global, configurable, default: ⌘`) |
+| `⌘T`      | New tab                                              |
+| `⌘W`      | Close current tab (or unpin if last tab)             |
+| `⌘1-9`    | Switch to tab 1-9                                    |
+| `⌘[`      | Previous tab                                         |
+| `⌘]`      | Next tab                                             |
+| `ESC ESC` | Hide window (double-tap, disabled when pinned)       |
 
 ## Tech Stack
 

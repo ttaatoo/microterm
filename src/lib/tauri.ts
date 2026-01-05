@@ -42,10 +42,7 @@ async function getListen() {
   return cachedListen;
 }
 
-export async function executeCommand(
-  cmd: string,
-  args: string[] = [],
-): Promise<CommandResult> {
+export async function executeCommand(cmd: string, args: string[] = []): Promise<CommandResult> {
   const invoke = await getInvoke();
   const result = await invoke<CommandResult>("execute_command", {
     cmd,
@@ -59,36 +56,27 @@ export async function executeCommandStream(
   args: string[] = [],
   onStdout: (chunk: string) => void,
   onStderr: (chunk: string) => void,
-  onComplete: (exitCode: number) => void,
+  onComplete: (exitCode: number) => void
 ): Promise<void> {
   const invoke = await getInvoke();
   const listen = await getListen();
 
   // Set up event listeners
-  const unlistenStdout = await listen<StreamChunk>(
-    "command-stdout",
-    (event) => {
-      onStdout(event.payload.chunk);
-    },
-  );
+  const unlistenStdout = await listen<StreamChunk>("command-stdout", (event) => {
+    onStdout(event.payload.chunk);
+  });
 
-  const unlistenStderr = await listen<StreamChunk>(
-    "command-stderr",
-    (event) => {
-      onStderr(event.payload.chunk);
-    },
-  );
+  const unlistenStderr = await listen<StreamChunk>("command-stderr", (event) => {
+    onStderr(event.payload.chunk);
+  });
 
-  const unlistenComplete = await listen<number>(
-    "command-complete",
-    (event) => {
-      onComplete(event.payload);
-      // Clean up listeners
-      unlistenStdout();
-      unlistenStderr();
-      unlistenComplete();
-    },
-  );
+  const unlistenComplete = await listen<number>("command-complete", (event) => {
+    onComplete(event.payload);
+    // Clean up listeners
+    unlistenStdout();
+    unlistenStderr();
+    unlistenComplete();
+  });
 
   // Execute command
   await invoke<number>("execute_command_stream", {
@@ -121,27 +109,17 @@ export interface PtyExit {
   exit_code: number | null;
 }
 
-export async function createPtySession(
-  cols: number,
-  rows: number
-): Promise<string> {
+export async function createPtySession(cols: number, rows: number): Promise<string> {
   const invoke = await getInvoke();
   return invoke<string>("create_pty_session", { cols, rows });
 }
 
-export async function writeToPty(
-  sessionId: string,
-  data: string
-): Promise<void> {
+export async function writeToPty(sessionId: string, data: string): Promise<void> {
   const invoke = await getInvoke();
   await invoke("write_to_pty", { sessionId, data });
 }
 
-export async function resizePty(
-  sessionId: string,
-  cols: number,
-  rows: number
-): Promise<void> {
+export async function resizePty(sessionId: string, cols: number, rows: number): Promise<void> {
   const invoke = await getInvoke();
   await invoke("resize_pty", { sessionId, cols, rows });
 }
@@ -180,6 +158,30 @@ export async function registerGlobalShortcut(
       // Emit event to Rust backend to toggle window
       await emit("toggle-window", {});
       onTrigger();
+    }
+  });
+
+  // Return unregister function
+  return async () => {
+    await unregister(shortcut);
+  };
+}
+
+// Register a global shortcut without toggling window (for pin, etc.)
+export async function registerGlobalShortcutNoToggle(
+  shortcut: string,
+  onTrigger: () => void | Promise<void>
+): Promise<() => Promise<void>> {
+  if (!isTauri()) {
+    console.warn("Global shortcuts only work in Tauri environment");
+    return async () => {};
+  }
+
+  const { register, unregister } = await import("@tauri-apps/plugin-global-shortcut");
+
+  await register(shortcut, async (event) => {
+    if (event.state === "Pressed") {
+      await onTrigger();
     }
   });
 

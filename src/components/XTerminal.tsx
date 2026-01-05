@@ -110,6 +110,8 @@ const XTerminal = forwardRef<XTerminalHandle, XTerminalProps>(function XTerminal
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const initializedRef = useRef(false);
   const lastEscTimeRef = useRef<number>(0);
+  // Reactive pin state ref - updated via event listener (M5 fix)
+  const pinnedRef = useRef<boolean>(false);
 
   // Store current search query for next/previous navigation
   const currentSearchQueryRef = useRef<string>("");
@@ -173,6 +175,35 @@ const XTerminal = forwardRef<XTerminalHandle, XTerminalProps>(function XTerminal
     }),
     []
   );
+
+  // Initialize and listen for pin state changes (M5 fix - reactive pin state)
+  useEffect(() => {
+    // Initialize from settings
+    const settings = loadSettings();
+    pinnedRef.current = settings.pinned ?? false;
+
+    // Listen for pin state updates
+    let unlistenFn: (() => void) | null = null;
+
+    const setupListener = async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        unlistenFn = await listen<{ pinned: boolean }>("pin-state-updated", (event) => {
+          if (typeof event.payload?.pinned === "boolean") {
+            pinnedRef.current = event.payload.pinned;
+          }
+        });
+      } catch (error) {
+        console.error("[Pin] Failed to setup pin state listener:", error);
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      unlistenFn?.();
+    };
+  }, []);
 
   // Update terminal background when opacity changes
   useEffect(() => {
@@ -320,11 +351,14 @@ const XTerminal = forwardRef<XTerminalHandle, XTerminalProps>(function XTerminal
         lastEscTimeRef.current = now;
 
         if (timeSinceLastEsc < DOUBLE_ESC_INTERVAL_MS) {
-          // Double ESC detected - hide window
-          try {
-            await invoke("hide_window");
-          } catch (error) {
-            console.error("[Window] Failed to hide window:", error);
+          // Double ESC detected - check pin status before hiding (M5 fix - use reactive ref)
+          if (!pinnedRef.current) {
+            // Only hide if not pinned
+            try {
+              await invoke("hide_window");
+            } catch (error) {
+              console.error("[Window] Failed to hide window:", error);
+            }
           }
           // Reset to prevent triple-ESC from triggering again
           lastEscTimeRef.current = 0;

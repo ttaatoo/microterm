@@ -9,6 +9,7 @@ import {
   MIN_FONT_SIZE,
   MAX_FONT_SIZE,
   DEFAULT_SHORTCUT,
+  DEFAULT_PIN_SHORTCUT,
   type Settings,
 } from "@/lib/settings";
 
@@ -59,6 +60,8 @@ function eventToShortcutString(e: KeyboardEvent): string | null {
     normalizedKey = key.toUpperCase();
   } else if (key === " ") {
     normalizedKey = "Space";
+  } else if (key === "`" || key === "Backquote") {
+    normalizedKey = "Backquote";
   } else if (key.startsWith("Arrow")) {
     normalizedKey = key.replace("Arrow", "");
   }
@@ -86,7 +89,9 @@ export default function SettingsPanel({
   const [fontSize, setFontSize] = useState(13);
   const [shortcut, setShortcut] = useState(DEFAULT_SHORTCUT);
   const [shortcutEnabled, setShortcutEnabled] = useState(true);
+  const [pinShortcut, setPinShortcut] = useState(DEFAULT_PIN_SHORTCUT);
   const [isRecording, setIsRecording] = useState(false);
+  const [isRecordingPin, setIsRecordingPin] = useState(false);
   const [launchAtLogin, setLaunchAtLogin] = useState(false);
   const [launchAtLoginLoading, setLaunchAtLoginLoading] = useState(true);
 
@@ -97,6 +102,7 @@ export default function SettingsPanel({
     setFontSize(settings.fontSize ?? 13);
     setShortcut(settings.globalShortcut ?? DEFAULT_SHORTCUT);
     setShortcutEnabled(settings.shortcutEnabled ?? true);
+    setPinShortcut(settings.pinShortcut ?? DEFAULT_PIN_SHORTCUT);
 
     // Check autostart status
     (async () => {
@@ -119,7 +125,7 @@ export default function SettingsPanel({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isRecording) {
+      if (e.key === "Escape" && !isRecording && !isRecordingPin) {
         e.preventDefault();
         e.stopPropagation();
         onClose();
@@ -128,7 +134,7 @@ export default function SettingsPanel({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, isRecording]);
+  }, [isOpen, onClose, isRecording, isRecordingPin]);
 
   // Handle shortcut recording
   useEffect(() => {
@@ -160,6 +166,37 @@ export default function SettingsPanel({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isRecording, onSettingsChange]);
+
+  // Handle pin shortcut recording
+  useEffect(() => {
+    if (!isRecordingPin) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // ESC cancels recording
+      if (e.key === "Escape") {
+        setIsRecordingPin(false);
+        return;
+      }
+
+      const newShortcut = eventToShortcutString(e);
+      if (newShortcut) {
+        setPinShortcut(newShortcut);
+        setIsRecordingPin(false);
+
+        // Save the new shortcut
+        const currentSettings = loadSettings();
+        const newSettings: Settings = { ...currentSettings, pinShortcut: newShortcut };
+        saveSettings(newSettings);
+        onSettingsChange(newSettings);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isRecordingPin, onSettingsChange]);
 
   const handleOpacityChange = useCallback(
     (value: number) => {
@@ -206,6 +243,10 @@ export default function SettingsPanel({
 
   const startRecording = () => {
     setIsRecording(true);
+  };
+
+  const startRecordingPin = () => {
+    setIsRecordingPin(true);
   };
 
   const handleLaunchAtLoginChange = useCallback(async (enabled: boolean) => {
@@ -308,6 +349,31 @@ export default function SettingsPanel({
               {shortcutEnabled
                 ? "Click to change the shortcut. Press ESC to cancel."
                 : "Enable to set a global shortcut for quick access"}
+            </div>
+          </div>
+
+          <div className="settings-divider" />
+
+          <div className="settings-item">
+            <label className="settings-label">
+              Pin Shortcut
+            </label>
+            <div className="shortcut-recorder">
+              <button
+                className={`shortcut-button ${isRecordingPin ? "recording" : ""}`}
+                onClick={startRecordingPin}
+              >
+                {isRecordingPin ? (
+                  <span className="recording-text">Press keys...</span>
+                ) : (
+                  <span className="shortcut-display">
+                    {formatShortcutDisplay(pinShortcut)}
+                  </span>
+                )}
+              </button>
+            </div>
+            <div className="settings-hint">
+              Click to change the shortcut for toggling pin state. Press ESC to cancel.
             </div>
           </div>
 
