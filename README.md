@@ -1,18 +1,20 @@
-# µTerm (MicroTerm)
+# µTerm (microterm) - Lightweight macOS Menubar Terminal
 
 [![CI](https://github.com/ttaatoo/microterm/actions/workflows/ci.yml/badge.svg)](https://github.com/ttaatoo/microterm/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-blue?logo=tauri)](https://tauri.app)
-[![Platform](https://img.shields.io/badge/platform-macOS_only-lightgrey?logo=apple)](https://www.apple.com/macos/)
+[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)](https://www.apple.com/macos/)
+[![Rust](https://img.shields.io/badge/Rust-1.92+-orange?logo=rust)](https://www.rust-lang.org/)
+[![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev/)
 
-A micro terminal that lives in your macOS menubar. Lightweight, fast, always one click away.
+**µTerm (microterm)** is a lightweight, fast terminal emulator for macOS that lives in your menubar. Built with Rust and Tauri for native performance, featuring multi-tab support, global shortcuts, and a minimal footprint. Always one click away from your terminal.
 
 > **Note:** This application is **macOS only**. It uses native macOS APIs (NSPanel, NSEvent, menubar/tray) that are not available on other platforms.
 
 Built with **Rust**, **Tauri 2.0**, and **Vite + React**.
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="µTerm Screenshot" width="760">
+  <img src="docs/screenshot.png" alt="µTerm (microterm) macOS menubar terminal with multi-tab support, customizable opacity, and pin window feature showing zsh shell interface" width="760">
 </p>
 
 ## Features
@@ -85,7 +87,7 @@ bun run lint
 1. **Open** - Click the menubar icon or press `⌘⇧T` (configurable)
 2. **Type** - Enter commands and press Enter to execute
 3. **Navigate** - Use Up/Down arrows to browse command history
-4. **Pin Window** - Click the pin button (📌) in the tab bar or press `⌘` (configurable) to pin/unpin the window. When pinned, the window stays visible even when clicking outside or losing focus
+4. **Pin Window** - Click the pin button (📌) in the tab bar or press `⌘`` (configurable) to pin/unpin the window. When pinned, the window stays visible even when clicking outside or losing focus
 5. **Settings** - Click the gear icon (⚙) to adjust opacity, font size, and shortcuts
 6. **Resize** - Drag the bottom corners to resize the window
 7. **Close** - Click outside the window, press `ESC` twice, or click the icon again (won't close if pinned)
@@ -95,7 +97,7 @@ bun run lint
 | Shortcut  | Action                                               |
 | --------- | ---------------------------------------------------- |
 | `⌘⇧T`     | Toggle terminal window (global, configurable)        |
-| `⌘`       | Toggle pin state (global, configurable, default: ⌘`) |
+| `⌘``      | Toggle pin state (global, configurable)              |
 | `⌘T`      | New tab                                              |
 | `⌘W`      | Close current tab (or unpin if last tab)             |
 | `⌘1-9`    | Switch to tab 1-9                                    |
@@ -103,12 +105,22 @@ bun run lint
 | `⌘]`      | Next tab                                             |
 | `ESC ESC` | Hide window (double-tap, disabled when pinned)       |
 
+## Use Cases
+
+µTerm is perfect for:
+
+- **Quick Commands** - Run terminal commands without switching windows
+- **Development Workflow** - Keep terminal accessible while coding
+- **System Administration** - Monitor system status and run maintenance tasks
+- **Power Users** - Fast access to shell with keyboard shortcuts
+- **Minimal Setup** - No configuration needed, works out of the box
+
 ## Tech Stack
 
 | Component  | Technology            |
 | ---------- | --------------------- |
 | Backend    | Rust + Tauri 2.0      |
-| Frontend   | Vite + React 18       |
+| Frontend   | Vite + React 19       |
 | Terminal   | xterm.js 5.5          |
 | PTY        | portable-pty          |
 | macOS APIs | objc2 + objc2-app-kit |
@@ -138,6 +150,38 @@ microterm/
 ## Contributing
 
 Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) before submitting a PR.
+
+## FAQ
+
+### Why macOS only?
+
+µTerm uses native macOS APIs (NSPanel, NSEvent, menubar/tray) that are not available on other platforms. These APIs provide the unique menubar integration and window behavior that make µTerm special.
+
+### Can I customize the appearance?
+
+Yes! Use the settings panel (⚙) to adjust opacity, font size, and keyboard shortcuts. More customization options may be added in future releases.
+
+### How do I report bugs?
+
+Please open an issue on GitHub with:
+
+- µTerm version
+- macOS version
+- Steps to reproduce
+- Expected vs actual behavior
+- Any relevant logs or screenshots
+
+### Is µTerm free and open source?
+
+Yes! µTerm is open source under the MIT License. You can use, modify, and distribute it freely.
+
+### How does µTerm compare to other terminals?
+
+µTerm focuses on quick access from the menubar with minimal resource usage. Unlike traditional terminals, it's designed to be always accessible without taking up screen space when not in use.
+
+### Can I contribute?
+
+Absolutely! We welcome contributions. Please read our [Contributing Guide](CONTRIBUTING.md) to get started.
 
 ## Changelog
 
