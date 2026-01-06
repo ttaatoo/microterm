@@ -16,11 +16,25 @@
   },
   "keywords": [
     "terminal",
+    "terminal-emulator",
     "menubar",
     "macos",
+    "macos-app",
     "tauri",
+    "tauri-app",
     "rust",
-    "desktop-app"
+    "react",
+    "vite",
+    "typescript",
+    "desktop-app",
+    "native-app",
+    "cli-tool",
+    "developer-tools",
+    "productivity",
+    "xterm",
+    "pty",
+    "shell",
+    "command-line"
   ],
   "scripts": {
     "dev": "vite",
