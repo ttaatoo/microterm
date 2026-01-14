@@ -12,6 +12,29 @@ vi.mock("@vanilla-extract/css", () => ({
   createThemeContract: () => ({}),
 }));
 
+// Global mock for Tauri APIs to support dynamic imports
+// Individual test files can override these with more specific mocks
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({
+    innerSize: vi.fn().mockResolvedValue({ width: 800, height: 600 }),
+    outerPosition: vi.fn().mockResolvedValue({ x: 100, y: 100 }),
+    setSize: vi.fn().mockResolvedValue(undefined),
+    setPosition: vi.fn().mockResolvedValue(undefined),
+    listen: vi.fn(),
+    once: vi.fn(),
+    emit: vi.fn(),
+  }),
+}));
+
+vi.mock("@tauri-apps/api/dpi", () => ({
+  PhysicalSize: class PhysicalSize {
+    constructor(public width: number, public height: number) {}
+  },
+  PhysicalPosition: class PhysicalPosition {
+    constructor(public x: number, public y: number) {}
+  },
+}));
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
