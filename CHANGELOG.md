@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0](https://github.com/ttaatoo/microterm/compare/v1.3.1...v1.4.0) (2026-01-14)
+
+
+### Features
+
+* add split pane functionality and refactor components ([048bfc3](https://github.com/ttaatoo/microterm/commit/048bfc32894a4e4dfe440743086e45cd9b496c46))
+* **ci:** add workflow_dispatch trigger to release-please workflow ([a8df29e](https://github.com/ttaatoo/microterm/commit/a8df29e2718b110a7cf8096f6611e325c93d4eb1))
+* **terminal:** improve split pane terminal lifecycle and focus ([67381be](https://github.com/ttaatoo/microterm/commit/67381befa9e0063827e88b3253f6efc2b3b43be1))
+
+
+### Bug Fixes
+
+* **release:** remove component config to fix tag creation ([dd871fe](https://github.com/ttaatoo/microterm/commit/dd871fedb660fbac515c549c8deb98e86cd35500))
+* **test:** fix pre-commit hook and test type errors ([9f05d8e](https://github.com/ttaatoo/microterm/commit/9f05d8e14a00e73cc4bd9c35da552efcd771f78d))
+* **test:** improve useTerminalFocus test isolation ([0fd874c](https://github.com/ttaatoo/microterm/commit/0fd874c910754ea2ce7a62785ac20f3b45b0735e))
+* **test:** resolve TypeScript lint errors in test files ([4767867](https://github.com/ttaatoo/microterm/commit/476786794e1900e97393c6275d9d7507b588464c))
+
+
+### Code Refactoring
+
+* **backend:** modularize Rust backend with new command modules ([cffc3f7](https://github.com/ttaatoo/microterm/commit/cffc3f77443da94737de9f2418bf4afa80c46840))
+* reorganize frontend library structure ([bde0d24](https://github.com/ttaatoo/microterm/commit/bde0d24b5f87bd946124f1ef08cd6bce2dfe3d7c))
+
+
+### Documentation
+
+* improve SEO and fix keyboard shortcuts ([a94c880](https://github.com/ttaatoo/microterm/commit/a94c880acf4c4ed4fc5be71d599eebfb679dea63))
+* restructure project documentation ([e3fea70](https://github.com/ttaatoo/microterm/commit/e3fea708a015c1410560ee147502898bb62985c1))
+
 ## [1.3.1](https://github.com/ttaatoo/microterm/compare/v1.3.0...v1.3.1) (2026-01-05)
 
 
