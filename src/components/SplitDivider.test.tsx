@@ -75,7 +75,6 @@ describe("SplitDivider", () => {
 
   it("should prevent default on mouse down", async () => {
     const onResize = vi.fn();
-    const _user = userEvent.setup();
     const { container } = render(
       <SplitDivider direction="vertical" branchId="branch-1" onResize={onResize} />
     );

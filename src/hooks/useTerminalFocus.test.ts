@@ -9,7 +9,6 @@ const mockUnlistenFocus = vi.fn();
 const mockUnlistenToggle = vi.fn();
 
 // Helper to flush all pending promises
-const _flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 vi.mock("@tauri-apps/api/window", () => {
   const mockWindow = {

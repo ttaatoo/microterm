@@ -95,7 +95,7 @@ describe("PtySession", () => {
     });
 
     it("should use custom buffer flush interval", () => {
-      const _session = new PtySession({
+      new PtySession({
         terminal: mockTerminal as Terminal,
         bufferFlushInterval: 100,
       });

@@ -48,15 +48,11 @@ describe("TabBar", () => {
       id: "tab-1",
       number: 1,
       title: "First Tab",
-      sessionId: "session-1",
-      paneTree: { type: "terminal", paneId: "pane-1" },
     },
     {
       id: "tab-2",
       number: 2,
       title: "Second Tab",
-      sessionId: "session-2",
-      paneTree: { type: "terminal", paneId: "pane-2" },
     },
   ];
 
@@ -70,10 +66,6 @@ describe("TabBar", () => {
       closeTab: mockCloseTab,
       setActiveTab: mockSetActiveTab,
       updateTabTitle: mockUpdateTabTitle,
-      findTabBySessionId: vi.fn(),
-      getActivePane: vi.fn(),
-      splitPane: vi.fn(),
-      closePane: vi.fn(),
       setActivePane: vi.fn(),
       updateTabSessionId: vi.fn(),
     });
@@ -151,10 +143,6 @@ describe("TabBar", () => {
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
         updateTabTitle: mockUpdateTabTitle,
-        findTabBySessionId: vi.fn(),
-        getActivePane: vi.fn(),
-        splitPane: vi.fn(),
-        closePane: vi.fn(),
         setActivePane: vi.fn(),
         updateTabSessionId: vi.fn(),
       });
@@ -407,10 +395,6 @@ describe("TabBar", () => {
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
         updateTabTitle: mockUpdateTabTitle,
-        findTabBySessionId: vi.fn(),
-        getActivePane: vi.fn(),
-        splitPane: vi.fn(),
-        closePane: vi.fn(),
         setActivePane: vi.fn(),
         updateTabSessionId: vi.fn(),
       });
@@ -584,8 +568,8 @@ describe("TabBar", () => {
       mockScrollIntoView = vi.fn();
       mockGetBoundingClientRect = vi.fn();
 
-      Element.prototype.getBoundingClientRect = mockGetBoundingClientRect;
-      Element.prototype.scrollIntoView = mockScrollIntoView;
+      Element.prototype.getBoundingClientRect = mockGetBoundingClientRect as unknown as () => DOMRect;
+      Element.prototype.scrollIntoView = mockScrollIntoView as unknown as (arg?: boolean | ScrollIntoViewOptions) => void;
 
       mockGetBoundingClientRect.mockReturnValue({
         left: 0,
@@ -613,7 +597,6 @@ describe("TabBar", () => {
           id: "tab-3",
           number: 3,
           title: "Third Tab",
-          sessionId: "session-3",
           paneTree: { type: "terminal" as const, paneId: "pane-3" },
         },
       ];
@@ -625,10 +608,6 @@ describe("TabBar", () => {
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
         updateTabTitle: mockUpdateTabTitle,
-        findTabBySessionId: vi.fn(),
-        getActivePane: vi.fn(),
-        splitPane: vi.fn(),
-        closePane: vi.fn(),
         setActivePane: vi.fn(),
         updateTabSessionId: vi.fn(),
       });
@@ -676,10 +655,6 @@ describe("TabBar", () => {
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
         updateTabTitle: mockUpdateTabTitle,
-        findTabBySessionId: vi.fn(),
-        getActivePane: vi.fn(),
-        splitPane: vi.fn(),
-        closePane: vi.fn(),
         setActivePane: vi.fn(),
         updateTabSessionId: vi.fn(),
       });
@@ -705,10 +680,6 @@ describe("TabBar", () => {
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
         updateTabTitle: mockUpdateTabTitle,
-        findTabBySessionId: vi.fn(),
-        getActivePane: vi.fn(),
-        splitPane: vi.fn(),
-        closePane: vi.fn(),
         setActivePane: vi.fn(),
         updateTabSessionId: vi.fn(),
       });

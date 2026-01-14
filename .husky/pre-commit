@@ -3,5 +3,11 @@
 # Frontend lint
 bun run lint
 
+# TypeScript type check (critical - CI also runs this)
+bun x tsc --noEmit
+
+# Frontend tests (critical - CI also runs this)
+bun run test:run
+
 # Rust format check
 cargo fmt --manifest-path src-tauri/Cargo.toml --check

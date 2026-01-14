@@ -19,7 +19,6 @@ describe("useTerminalResize", () => {
   let mockPtyManager: PtyManager;
   let mockFitAddon: { fit: ReturnType<typeof vi.fn> };
   let containerRef: React.RefObject<HTMLDivElement>;
-  let _mockResizeObserver: MockResizeObserver;
   let mockOnResize: ReturnType<typeof vi.fn>;
   let mockDisposeResizeListener: ReturnType<typeof vi.fn>;
 
@@ -48,7 +47,6 @@ describe("useTerminalResize", () => {
     const div = document.createElement("div");
     containerRef.current = div;
 
-    mockResizeObserver = new MockResizeObserver();
     vi.clearAllMocks();
   });
 

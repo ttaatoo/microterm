@@ -399,7 +399,6 @@ describe("SearchBar", () => {
     });
 
     it("should handle empty query navigation attempts", async () => {
-      const _user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const input = screen.getByPlaceholderText("Find");

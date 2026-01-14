@@ -45,7 +45,7 @@ describe("shortcuts.ts", () => {
       const onTrigger = vi.fn();
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
-      mockRegister.mockImplementation((shortcut: string, callback: any) => {
+      mockRegister.mockImplementation((_shortcut: string, callback: any) => {
         registeredCallback = callback;
         return Promise.resolve();
       });
@@ -71,7 +71,7 @@ describe("shortcuts.ts", () => {
       const onTrigger = vi.fn();
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
-      mockRegister.mockImplementation((shortcut: string, callback: any) => {
+      mockRegister.mockImplementation((_shortcut: string, callback: any) => {
         registeredCallback = callback;
         return Promise.resolve();
       });
@@ -110,7 +110,7 @@ describe("shortcuts.ts", () => {
       const onTrigger = vi.fn();
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
-      mockRegister.mockImplementation((shortcut: string, callback: any) => {
+      mockRegister.mockImplementation((_shortcut: string, callback: any) => {
         registeredCallback = callback;
         return Promise.resolve();
       });
@@ -136,7 +136,7 @@ describe("shortcuts.ts", () => {
       const onTrigger = vi.fn().mockResolvedValue(undefined);
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
-      mockRegister.mockImplementation((shortcut: string, callback: any) => {
+      mockRegister.mockImplementation((_shortcut: string, callback: any) => {
         registeredCallback = callback;
         return Promise.resolve();
       });
@@ -232,7 +232,7 @@ describe("shortcuts.ts", () => {
       const onTrigger = vi.fn();
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
-      mockRegister.mockImplementation((shortcut: string, callback: any) => {
+      mockRegister.mockImplementation((_shortcut: string, callback: any) => {
         registeredCallback = callback;
         return Promise.resolve();
       });
@@ -257,7 +257,7 @@ describe("shortcuts.ts", () => {
       const onTrigger = vi.fn();
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
-      mockRegister.mockImplementation((shortcut: string, callback: any) => {
+      mockRegister.mockImplementation((_shortcut: string, callback: any) => {
         registeredCallback = callback;
         return Promise.resolve();
       });

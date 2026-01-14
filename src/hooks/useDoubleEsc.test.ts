@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useDoubleEsc } from "./useDoubleEsc";
 import { ESC_KEY, DOUBLE_ESC_INTERVAL_MS } from "@/lib/constants";
