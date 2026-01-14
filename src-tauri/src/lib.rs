@@ -9,12 +9,16 @@
 pub mod commands;
 pub mod pty;
 pub mod pty_commands;
+pub mod screen_config;
+pub mod settings;
+pub mod settings_commands;
+pub mod window_commands;
 
 use std::sync::Arc;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconEvent,
-    Emitter, Listener, Manager, WebviewWindow,
+    Emitter, Listener, Manager, Monitor, WebviewWindow,
 };
 use tracing::{debug, error, info};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
@@ -514,11 +518,24 @@ fn toggle_window(window: &WebviewWindow) {
 
         unsafe {
             if macos::is_ns_window_visible(ns_window) {
+                // Save current window size and position before hiding
+                if let Err(e) = save_window_config(window) {
+                    error!("Failed to save window config: {}", e);
+                }
                 macos::hide_window(ns_window);
             } else {
-                // Calculate position and show window atomically to prevent flicker
-                let position = calculate_window_position(window);
-                macos::show_window_at(ns_window, position);
+                // Apply window size and position BEFORE showing (atomic operation)
+                if let Err(e) = apply_window_config(window) {
+                    error!("Failed to apply window config: {}", e);
+                    // Fall back to old behavior
+                    let position = calculate_window_position(window);
+                    macos::show_window_at(ns_window, position);
+                    return;
+                }
+
+                // Now show window with correct size and position already applied (no flash!)
+                // Pass None to show_window_at since position was already set by apply_window_config
+                macos::show_window_at(ns_window, None);
             }
         }
     }
@@ -532,6 +549,399 @@ fn toggle_window(window: &WebviewWindow) {
             let _ = window.set_focus();
         }
     }
+}
+
+/// Apply window configuration for current screen (size and position)
+fn apply_window_config(window: &WebviewWindow) -> Result<(), String> {
+    use tauri::Manager;
+
+    // Get screen config manager
+    let config_manager = window
+        .app_handle()
+        .state::<Arc<screen_config::ScreenConfigManager>>();
+
+    // Detect which screen the cursor is on
+    let monitor = detect_cursor_monitor(window)?;
+
+    let scale = monitor.scale_factor();
+    let size = monitor.size();
+
+    // Calculate logical dimensions
+    let screen_width = size.width as f64 / scale;
+    let screen_height = size.height as f64 / scale;
+
+    // Available space (account for menubar on macOS)
+    let available_height = (screen_height - 25.0).max(screen_height * 0.9);
+    let available_width = screen_width;
+
+    // Generate screen ID
+    let screen_id = screen_config::ScreenId::from_dimensions(screen_width, screen_height);
+
+    // Get or create config for this screen
+    let (mut config, is_new) = config_manager.get_or_create_config(
+        &screen_id,
+        screen_width,
+        screen_height,
+        available_width,
+        available_height,
+    );
+
+    // VALIDATION: Detect corrupted config (window size larger than screen)
+    // This can happen if configs were saved with wrong screen ID
+    if config.width > available_width * 1.1 || config.height > available_height * 1.1 {
+        error!(
+            "⚠️  Corrupted config detected for screen {}: window size ({}x{}) exceeds screen size ({}x{})",
+            screen_id.as_str(),
+            config.width,
+            config.height,
+            available_width,
+            available_height
+        );
+        error!("   Resetting to default size to fix corruption");
+
+        // Reset to default size for this screen
+        config.width = (available_width * 0.8).min(1200.0);
+        config.height = (available_height * 0.8).min(800.0);
+
+        // Save the corrected config
+        config_manager.set_config(screen_id.clone(), config.clone());
+    }
+
+    if is_new {
+        debug!(
+            "New screen {}: applying default {}x{}",
+            screen_id.as_str(),
+            config.width,
+            config.height
+        );
+    } else {
+        debug!(
+            "Known screen {}: restoring saved {}x{} at ({:?}, {:?})",
+            screen_id.as_str(),
+            config.width,
+            config.height,
+            config.x,
+            config.y
+        );
+    }
+
+    // CRITICAL: Use NSWindow API directly for SYNCHRONOUS size/position setting
+    // Tauri's set_size() and set_position() are async and may not complete before show_window_at()
+    // This causes visual flashing: window shows at old size, then jumps to new size
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::{NSEvent, NSScreen, NSWindow};
+        use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize};
+
+        let ns_window = window
+            .ns_window()
+            .map_err(|e| format!("Failed to get NSWindow: {}", e))?
+            as *mut objc2::runtime::AnyObject;
+
+        // SAFETY: Validate pointer before dereferencing
+        // This prevents crashes if window is being closed or deallocated
+        if ns_window.is_null() {
+            return Err("NSWindow pointer is null".to_string());
+        }
+
+        unsafe {
+            // Use NonNull to ensure pointer validity
+            let ns_window_nn = match std::ptr::NonNull::new(ns_window as *mut NSWindow) {
+                Some(nn) => nn,
+                None => return Err("Failed to create NonNull from NSWindow pointer".to_string()),
+            };
+            let ns_window_ref: &NSWindow = ns_window_nn.as_ref();
+
+            // IMPORTANT: We must use NSScreen coordinates, not Tauri monitor coordinates
+            // NSScreen uses bottom-left origin, Tauri uses top-left origin
+            // Mixing them causes windows to appear off-screen!
+
+            // Get the NSScreen for the detected monitor
+            if let Some(mtm) = MainThreadMarker::new() {
+                // Get mouse position to find the correct NSScreen
+                let mouse_location = NSEvent::mouseLocation();
+                let screens = NSScreen::screens(mtm);
+
+                let mut target_screen_frame: Option<objc2_foundation::NSRect> = None;
+
+                // Find NSScreen containing the cursor
+                for i in 0..screens.count() {
+                    let ns_screen = screens.objectAtIndex(i);
+                    let frame = ns_screen.frame();
+
+                    if mouse_location.x >= frame.origin.x
+                        && mouse_location.x < frame.origin.x + frame.size.width
+                        && mouse_location.y >= frame.origin.y
+                        && mouse_location.y < frame.origin.y + frame.size.height
+                    {
+                        target_screen_frame = Some(frame);
+                        break;
+                    }
+                }
+
+                if let Some(screen_frame) = target_screen_frame {
+                    // Use saved position if available, otherwise center the window
+                    let (ns_x, ns_y) = if let (Some(saved_x), Some(saved_y)) = (config.x, config.y)
+                    {
+                        // Convert saved logical Tauri coordinates to NSWindow coordinates
+                        // Tauri uses top-left origin, NSWindow uses bottom-left origin
+                        // saved_y is from top of screen, need to convert to bottom
+                        let screen_top = screen_frame.origin.y + screen_frame.size.height;
+                        let ns_x = screen_frame.origin.x + saved_x;
+                        let ns_y = screen_top - saved_y - config.height;
+
+                        debug!(
+                            "Using saved position: Tauri({}, {}) -> NSWindow({:.1}, {:.1})",
+                            saved_x, saved_y, ns_x, ns_y
+                        );
+                        (ns_x, ns_y)
+                    } else {
+                        // No saved position, center the window
+                        let center_offset = (screen_frame.size.width - config.width) / 2.0;
+                        let ns_x = screen_frame.origin.x + center_offset;
+
+                        // Calculate y position: 4px from top in NSWindow coordinates
+                        let screen_top = screen_frame.origin.y + screen_frame.size.height;
+                        let ns_y = screen_top - 4.0 - config.height;
+
+                        debug!("No saved position, centering window");
+                        (ns_x, ns_y)
+                    };
+
+                    let frame = NSRect::new(
+                        NSPoint::new(ns_x, ns_y),
+                        NSSize::new(config.width, config.height),
+                    );
+
+                    debug!(
+                        "Setting window frame SYNCHRONOUSLY: origin=({:.1}, {:.1}) size=({:.1}x{:.1}) on screen frame=({:.1}, {:.1})",
+                        ns_x, ns_y, config.width, config.height,
+                        screen_frame.origin.x, screen_frame.origin.y
+                    );
+                    debug!(
+                        "Window height breakdown: total={:.1}, TabBar=40, terminal_area={:.1}",
+                        config.height,
+                        config.height - 40.0
+                    );
+
+                    // setFrame:display: is synchronous - window immediately has new size/position
+                    // Use false to defer display update, preventing double render when orderFrontRegardless() is called
+                    ns_window_ref.setFrame_display(frame, false);
+                } else {
+                    return Err("Could not find NSScreen for cursor position".to_string());
+                }
+            } else {
+                return Err("MainThreadMarker not available".to_string());
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Fallback for non-macOS (async is acceptable there)
+        let physical_width = (config.width * scale) as u32;
+        let physical_height = (config.height * scale) as u32;
+        window
+            .set_size(PhysicalSize::new(physical_width, physical_height))
+            .map_err(|e| format!("Failed to set window size: {}", e))?;
+
+        let center_offset = (screen_width - config.width) / 2.0;
+        let window_x = position.x + (center_offset * scale) as i32;
+        let window_y = position.y + (4.0 * scale) as i32;
+
+        window
+            .set_position(Position::Physical(PhysicalPosition {
+                x: window_x,
+                y: window_y,
+            }))
+            .map_err(|e| format!("Failed to set window position: {}", e))?;
+    }
+
+    Ok(())
+}
+
+/// Save current window configuration for the screen it's on
+fn save_window_config(window: &WebviewWindow) -> Result<(), String> {
+    use tauri::Manager;
+
+    let config_manager = window
+        .app_handle()
+        .state::<Arc<screen_config::ScreenConfigManager>>();
+
+    // IMPORTANT: Use the screen where the WINDOW currently is, not where the cursor is
+    // This prevents config corruption when user moves mouse to another screen before hiding
+    let monitor = window
+        .current_monitor()
+        .map_err(|e| format!("Failed to get monitor: {}", e))?
+        .or_else(|| {
+            // Fallback: if current_monitor returns None (window hidden), detect by cursor
+            // This is less accurate but better than failing completely
+            detect_cursor_monitor(window).ok()
+        })
+        .ok_or("No monitor found")?;
+
+    let scale = monitor.scale_factor();
+    let size = monitor.size();
+
+    let screen_width = size.width as f64 / scale;
+    let screen_height = size.height as f64 / scale;
+    let screen_id = screen_config::ScreenId::from_dimensions(screen_width, screen_height);
+
+    // Get current window size and position
+    let outer_size = window
+        .outer_size()
+        .map_err(|e| format!("Failed to get window size: {}", e))?;
+
+    let outer_position = window
+        .outer_position()
+        .map_err(|e| format!("Failed to get window position: {}", e))?;
+
+    // Convert to logical pixels
+    let logical_width = outer_size.width as f64 / scale;
+    let logical_height = outer_size.height as f64 / scale;
+    let logical_x = outer_position.x as f64 / scale;
+    let logical_y = outer_position.y as f64 / scale;
+
+    debug!(
+        "Saving window config for screen {}: {}x{} at ({}, {}) (logical pixels)",
+        screen_id.as_str(),
+        logical_width,
+        logical_height,
+        logical_x,
+        logical_y
+    );
+
+    // Save both size and position to remember user's window placement
+    let config = screen_config::WindowConfig {
+        width: logical_width,
+        height: logical_height,
+        x: Some(logical_x),
+        y: Some(logical_y),
+    };
+
+    config_manager.set_config(screen_id, config);
+    Ok(())
+}
+
+/// Detect which monitor the cursor is currently on
+fn detect_cursor_monitor(window: &WebviewWindow) -> Result<Monitor, String> {
+    // Detect the screen where the mouse cursor is located
+    let monitors = window
+        .available_monitors()
+        .map_err(|e| format!("Failed to get monitors: {}", e))?;
+
+    // Use AppKit to get mouse cursor position
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::{NSEvent, NSScreen};
+        use objc2_foundation::MainThreadMarker;
+
+        if let Some(mtm) = MainThreadMarker::new() {
+            // Get mouse location in global screen coordinates
+            let mouse_location = NSEvent::mouseLocation();
+            let cursor_x = mouse_location.x;
+            let cursor_y = mouse_location.y;
+
+            debug!(
+                "Mouse cursor at: ({:.1}, {:.1}) in screen coordinates",
+                cursor_x, cursor_y
+            );
+
+            // Get all screens to understand the coordinate system
+            let screens = NSScreen::screens(mtm);
+            let screen_count = screens.count();
+
+            debug!("Available screens: {}", screen_count);
+
+            // First, log ALL screens to understand the layout
+            for i in 0..screen_count {
+                let ns_screen = screens.objectAtIndex(i);
+                let frame = ns_screen.frame();
+                debug!(
+                    "NSScreen {}: frame=({:.1}, {:.1}) size=({:.1}x{:.1})",
+                    i, frame.origin.x, frame.origin.y, frame.size.width, frame.size.height
+                );
+            }
+
+            // Try to match cursor position with NSScreen, then find corresponding Tauri monitor
+            for i in 0..screen_count {
+                let ns_screen = screens.objectAtIndex(i);
+                let frame = ns_screen.frame();
+                let screen_x = frame.origin.x;
+                let screen_y = frame.origin.y;
+                let screen_w = frame.size.width;
+                let screen_h = frame.size.height;
+
+                // Check if cursor is within this screen's bounds
+                if cursor_x >= screen_x
+                    && cursor_x < screen_x + screen_w
+                    && cursor_y >= screen_y
+                    && cursor_y < screen_y + screen_h
+                {
+                    debug!("Cursor is on NSScreen {}", i);
+
+                    // Find matching Tauri monitor by size and position
+                    for monitor in &monitors {
+                        let mon_pos = monitor.position();
+                        let mon_size = monitor.size();
+                        let scale = monitor.scale_factor();
+
+                        // Convert to logical coordinates
+                        let mon_x = mon_pos.x as f64 / scale;
+                        let mon_y = mon_pos.y as f64 / scale;
+                        let mon_w = mon_size.width as f64 / scale;
+                        let mon_h = mon_size.height as f64 / scale;
+
+                        debug!(
+                            "Tauri monitor: pos=({:.1}, {:.1}) size=({:.1}x{:.1})",
+                            mon_x, mon_y, mon_w, mon_h
+                        );
+
+                        // Match by size (position might differ between coordinate systems)
+                        let tolerance = 10.0;
+                        let width_diff = (screen_w - mon_w).abs();
+                        let height_diff = (screen_h - mon_h).abs();
+
+                        debug!(
+                            "Size comparison: NSScreen=({:.1}x{:.1}) vs Tauri=({:.1}x{:.1}), diff=({:.1}, {:.1})",
+                            screen_w, screen_h, mon_w, mon_h, width_diff, height_diff
+                        );
+
+                        if width_diff < tolerance && height_diff < tolerance {
+                            debug!("✅ Matched screen by size: NSScreen {} -> Tauri monitor", i);
+                            return Ok(monitor.clone());
+                        } else {
+                            debug!(
+                                "❌ No match: width_diff={:.1} height_diff={:.1} (tolerance={:.1})",
+                                width_diff, height_diff, tolerance
+                            );
+                        }
+                    }
+
+                    debug!("No Tauri monitor matched NSScreen {}", i);
+                } else {
+                    debug!(
+                        "Cursor NOT on NSScreen {}: cursor=({:.1}, {:.1}) is outside frame=({:.1}, {:.1}) + size=({:.1}x{:.1})",
+                        i, cursor_x, cursor_y, screen_x, screen_y, screen_w, screen_h
+                    );
+                }
+            }
+
+            debug!(
+                "⚠️  Cursor position ({:.1}, {:.1}) not found on any NSScreen",
+                cursor_x, cursor_y
+            );
+        } else {
+            debug!("⚠️  MainThreadMarker not available");
+        }
+    }
+
+    // Fallback to primary monitor
+    debug!("Could not detect cursor screen, falling back to primary monitor");
+    window
+        .primary_monitor()
+        .map_err(|e| format!("Failed to get primary monitor: {}", e))?
+        .ok_or_else(|| "No primary monitor found".to_string())
 }
 
 /// Initialize the tracing subscriber for structured logging.
@@ -576,6 +986,16 @@ pub fn run() {
             pty_commands::resize_pty,
             pty_commands::close_pty_session,
             pty_commands::get_pty_cwd,
+            window_commands::get_screen_info,
+            window_commands::adjust_window_size,
+            window_commands::ensure_window_visible,
+            settings_commands::get_settings,
+            settings_commands::update_settings,
+            settings_commands::set_opacity,
+            settings_commands::set_font_size,
+            settings_commands::set_pinned,
+            settings_commands::get_pinned,
+            settings_commands::set_onboarding_complete,
         ])
         .setup(|app| {
             let window = app
@@ -583,6 +1003,29 @@ pub fn run() {
                 .ok_or_else(|| tauri::Error::WindowNotFound)?;
             let window_for_tray = window.clone();
             let window_for_shortcut = window.clone();
+
+            // Initialize screen config manager
+            let config_path = app
+                .path()
+                .app_data_dir()
+                .map_err(|e| tauri::Error::Anyhow(e.into()))?
+                .join("screen-configs.json");
+            let screen_config_manager =
+                Arc::new(screen_config::ScreenConfigManager::new(config_path));
+            app.manage(screen_config_manager.clone());
+
+            // Initialize settings manager
+            let settings_path = app
+                .path()
+                .app_data_dir()
+                .map_err(|e| tauri::Error::Anyhow(e.into()))?
+                .join("settings.json");
+            let settings_manager = Arc::new(settings::SettingsManager::new(settings_path));
+            app.manage(settings_manager.clone());
+
+            // Note: Window size is now managed by screen_config.rs per-screen
+            // It will be applied in apply_window_config() when window is first shown
+            // This eliminates duplicate size adjustments and visual flashing
 
             // Configure macOS-specific panel behavior
             #[cfg(target_os = "macos")]
@@ -656,10 +1099,14 @@ pub fn run() {
                 pinned: bool,
             }
 
+            let settings_manager_for_pin = settings_manager.clone();
             app.listen(
                 "pin-state-changed",
                 move |event| match serde_json::from_str::<PinStatePayload>(event.payload()) {
                     Ok(payload) => {
+                        // Save to settings
+                        settings_manager_for_pin.set_pinned(payload.pinned);
+
                         #[cfg(target_os = "macos")]
                         {
                             macos::set_window_pinned(payload.pinned);
@@ -671,6 +1118,42 @@ pub fn run() {
                     }
                 },
             );
+
+            // Listen for window resize events to auto-save configuration
+            {
+                let window_for_resize = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::Resized(_) = event {
+                        // Save window config when user manually resizes
+                        // Only save if window is visible (don't save during toggle_window size application)
+                        // SAFETY: Check window is still valid before accessing it to prevent race conditions
+                        // during window closure. Errors are expected during shutdown, so only log in debug mode.
+                        match window_for_resize.is_visible() {
+                            Ok(true) => {
+                                // Verify window is still accessible before saving
+                                if window_for_resize.is_closable().unwrap_or(false) {
+                                    debug!("Window resized, auto-saving configuration");
+                                    if let Err(e) = save_window_config(&window_for_resize) {
+                                        // Only log if window is still visible (not being closed)
+                                        if window_for_resize.is_visible().unwrap_or(false) {
+                                            error!(
+                                                "Failed to auto-save window config on resize: {}",
+                                                e
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            Ok(false) => {
+                                // Window not visible, skip save
+                            }
+                            Err(_) => {
+                                // Window invalid/closing, skip save (expected during shutdown)
+                            }
+                        }
+                    }
+                });
+            }
 
             // Also emit an event when window is toggled so frontend can track state
             let _ = app.emit("window-ready", ());

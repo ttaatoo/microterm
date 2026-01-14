@@ -15,13 +15,15 @@
         "title": "µTerm",
         "width": 800,
         "height": 650,
-        "resizable": false,
+        "resizable": true,
         "fullscreen": false,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
         "skipTaskbar": true,
-        "visible": false
+        "visible": false,
+        "minWidth": 250,
+        "minHeight": 150
       }
     ],
     "security": {

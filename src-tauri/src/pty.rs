@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use tauri::{AppHandle, Emitter};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace, warn};
 
 /// Minimum allowed PTY columns
 const MIN_PTY_COLS: u16 = 20;
@@ -97,6 +97,8 @@ impl PtyManager {
         // Set up environment variables for proper terminal behavior
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
+
+        info!(session_id = %session_id, "Setting PTY environment: TERM=xterm-256color, COLORTERM=truecolor");
 
         // Inherit important environment variables for shell compatibility
         cmd.env("HOME", &home);
@@ -194,6 +196,9 @@ impl PtyManager {
         let reader_thread = thread::spawn(move || {
             // Use larger buffer for better throughput
             let mut buffer = [0u8; PTY_READ_BUFFER_SIZE];
+            // Buffer for incomplete UTF-8 sequences at boundary
+            let mut utf8_buffer: Vec<u8> = Vec::new();
+
             loop {
                 // Check if shutdown was requested
                 if shutdown_flag_clone.load(Ordering::SeqCst) {
@@ -206,7 +211,64 @@ impl PtyManager {
                         break;
                     }
                     Ok(n) => {
-                        let data = String::from_utf8_lossy(&buffer[..n]).to_string();
+                        // Combine any previous incomplete UTF-8 bytes with new data
+                        let mut full_buffer = utf8_buffer.clone();
+                        full_buffer.extend_from_slice(&buffer[..n]);
+                        utf8_buffer.clear();
+
+                        // Try to convert to UTF-8
+                        let data = match std::str::from_utf8(&full_buffer) {
+                            Ok(s) => s.to_string(),
+                            Err(e) => {
+                                // UTF-8 error - likely incomplete sequence at end
+                                let valid_up_to = e.valid_up_to();
+
+                                // Save incomplete bytes for next iteration
+                                // SAFETY: UTF-8 sequences are at most 4 bytes. If buffer exceeds this,
+                                // discard it to prevent memory leaks from malformed data
+                                if valid_up_to < full_buffer.len() {
+                                    let incomplete_len = full_buffer.len() - valid_up_to;
+                                    if incomplete_len <= 4 {
+                                        utf8_buffer.extend_from_slice(&full_buffer[valid_up_to..]);
+                                    } else {
+                                        // Malformed data exceeds max UTF-8 sequence length
+                                        warn!(
+                                            session_id = %session_id_for_thread,
+                                            incomplete_len = incomplete_len,
+                                            "Discarding malformed UTF-8 data exceeding 4 bytes"
+                                        );
+                                        utf8_buffer.clear();
+                                    }
+                                }
+
+                                // Convert valid portion
+                                String::from_utf8_lossy(&full_buffer[..valid_up_to]).to_string()
+                            }
+                        };
+
+                        // Trace: Check for potential escape sequence fragmentation
+                        // This helps identify if PTY buffer boundaries split multi-byte sequences
+                        // NOTE: This is expected and xterm.js handles it gracefully
+                        if cfg!(debug_assertions)
+                            && (data.ends_with('\x1b') || data.ends_with("\x1b["))
+                        {
+                            // Safely get last few chars (respecting UTF-8 boundaries)
+                            let tail_preview: String = data
+                                .chars()
+                                .rev()
+                                .take(5)
+                                .collect::<Vec<_>>()
+                                .into_iter()
+                                .rev()
+                                .collect();
+                            trace!(
+                                session_id = %session_id_for_thread,
+                                chunk_size = n,
+                                ends_with = format!("{:?}", tail_preview),
+                                "Escape sequence fragmentation at buffer boundary (expected, handled by xterm.js)"
+                            );
+                        }
+
                         let _ = app_clone.emit(
                             "pty-output",
                             PtyOutput {
@@ -272,12 +334,18 @@ impl PtyManager {
     }
 
     pub fn write_to_session(&self, session_id: &str, data: &str) -> Result<(), String> {
-        let sessions = self.sessions.lock();
-        let session = sessions
-            .get(session_id)
-            .ok_or_else(|| format!("Session not found: {}", session_id))?;
+        // Get the Arc<Mutex<PtySession>> under lock, then release immediately
+        // This prevents blocking all sessions during I/O on one session
+        let session_arc = {
+            let sessions = self.sessions.lock();
+            sessions
+                .get(session_id)
+                .cloned() // Clone the Arc (cheap - just incrementing ref count)
+                .ok_or_else(|| format!("Session not found: {}", session_id))?
+        }; // sessions lock released here
 
-        let mut session_guard = session.lock();
+        // Now only hold the individual session lock during I/O
+        let mut session_guard = session_arc.lock();
         session_guard
             .writer
             .write_all(data.as_bytes())
@@ -294,12 +362,17 @@ impl PtyManager {
         // Validate PTY dimensions before resizing
         validate_pty_size(cols, rows)?;
 
-        let sessions = self.sessions.lock();
-        let session = sessions
-            .get(session_id)
-            .ok_or_else(|| format!("Session not found: {}", session_id))?;
+        // Get the Arc<Mutex<PtySession>> under lock, then release immediately
+        let session_arc = {
+            let sessions = self.sessions.lock();
+            sessions
+                .get(session_id)
+                .cloned() // Clone the Arc (cheap - just incrementing ref count)
+                .ok_or_else(|| format!("Session not found: {}", session_id))?
+        }; // sessions lock released here
 
-        let session_guard = session.lock();
+        // Now only hold the individual session lock during resize
+        let session_guard = session_arc.lock();
         session_guard
             .pair
             .master
