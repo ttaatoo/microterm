@@ -42,13 +42,14 @@ export function usePinState() {
     };
   }, []);
 
-  // Sync pin state to Rust backend on mount only (H1 fix - removed [pinned] dependency)
+  // Sync pin state to Rust backend on mount only
   useEffect(() => {
     const syncInitialState = async () => {
       try {
         const settings = loadSettings();
-        const { emit } = await import("@tauri-apps/api/event");
-        await emit("pin-state-changed", { pinned: settings.pinned ?? false });
+        const { invoke } = await import("@tauri-apps/api/core");
+        // Use command for synchronous update
+        await invoke("set_pinned", { pinned: settings.pinned ?? false });
       } catch (error) {
         console.error("[Pin] Failed to sync initial pin state:", error);
       }
@@ -65,19 +66,18 @@ export function usePinState() {
     // Update local state immediately for responsive UI
     setPinned(newPinned);
 
-    // Save to settings
+    // Save to localStorage
     const newSettings: Settings = { ...settings, pinned: newPinned };
     saveSettings(newSettings);
 
-    // Sync to Rust backend and notify other frontend components
+    // Sync to Rust backend SYNCHRONOUSLY via command (not event)
+    // This prevents race conditions where clicks might happen before Rust updates
     try {
-      const { emit } = await import("@tauri-apps/api/event");
-      // Single event to Rust backend
-      await emit("pin-state-changed", { pinned: newPinned });
-      // Single event to frontend components
-      await emit("pin-state-updated", { pinned: newPinned });
+      const { invoke } = await import("@tauri-apps/api/core");
+      // This command updates Rust state AND emits "pin-state-updated" to other frontend components
+      await invoke("set_pinned", { pinned: newPinned });
     } catch (error) {
-      console.error("[Pin] Failed to sync pin state:", error);
+      console.error("[Pin] Failed to sync pin state to backend:", error);
       // Revert to original state on failure
       setPinned(oldPinned);
       saveSettings({ ...settings, pinned: oldPinned });
@@ -95,15 +95,15 @@ export function usePinState() {
     // Update local state
     setPinned(newPinned);
 
-    // Save to settings
+    // Save to localStorage
     const newSettings: Settings = { ...settings, pinned: newPinned };
     saveSettings(newSettings);
 
-    // Sync to Rust backend and notify frontend
+    // Sync to Rust backend SYNCHRONOUSLY via command
     try {
-      const { emit } = await import("@tauri-apps/api/event");
-      await emit("pin-state-changed", { pinned: newPinned });
-      await emit("pin-state-updated", { pinned: newPinned });
+      const { invoke } = await import("@tauri-apps/api/core");
+      // This command updates Rust state AND emits "pin-state-updated" to other frontend components
+      await invoke("set_pinned", { pinned: newPinned });
     } catch (error) {
       console.error("[Pin] Failed to set pin state:", error);
       // Revert to original state on failure

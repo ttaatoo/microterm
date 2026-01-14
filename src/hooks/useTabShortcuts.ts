@@ -1,11 +1,15 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useTabContext } from "@/contexts/TabContext";
+import { usePaneContext } from "@/contexts/PaneContext";
 import { loadSettings } from "@/lib/settings";
 import { togglePinState, setPinState } from "@/lib/pin";
 
 export function useTabShortcuts(disabled = false) {
-  const { tabs, activeTabId, createTab, closeTab, setActiveTab, canCloseTab } =
+  const { tabs, activeTabId, createTab, closeTab, setActiveTab } =
     useTabContext();
+  const { getPaneCount } = usePaneContext();
+  // Compute locally instead of from context to reduce re-renders
+  const canCloseTab = tabs.length > 1;
 
   // Store refs for the current tab state to use in global shortcuts
   const tabsRef = useRef(tabs);
@@ -41,11 +45,15 @@ export function useTabShortcuts(disabled = false) {
     let unregisterCtrlTab: (() => Promise<void>) | null = null;
     let unregisterCtrlShiftTab: (() => Promise<void>) | null = null;
     let isRegistered = false;
+    let isMounted = true;
 
     const registerShortcuts = async () => {
-      if (isRegistered) return;
+      if (isRegistered || !isMounted) return;
       try {
         const { registerLocalShortcut } = await import("@/lib/tauri");
+
+        // Check if still mounted after async import
+        if (!isMounted) return;
 
         // Register Ctrl+Tab for next tab
         unregisterCtrlTab = await registerLocalShortcut("Ctrl+Tab", () => {
@@ -94,8 +102,10 @@ export function useTabShortcuts(disabled = false) {
     window.addEventListener("blur", handleBlur);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("blur", handleBlur);
+      // Await cleanup to prevent listener accumulation
       unregisterShortcuts();
     };
   }, [disabled, navigateTabsGlobal]);
@@ -136,7 +146,15 @@ export function useTabShortcuts(disabled = false) {
           break;
 
         case "w":
-          // Cmd+W: Close current tab, or handle pin state if last tab
+          // Cmd+W: Close pane if multiple panes exist, otherwise close tab
+          // Check if current tab has multiple panes
+          const paneCount = activeTabId ? getPaneCount(activeTabId) : 0;
+          if (paneCount > 1) {
+            // Multiple panes: let pane shortcuts handle it (don't prevent default here)
+            // The pane shortcut handler will prevent default
+            return; // Don't handle, let usePaneShortcuts handle it
+          }
+          // Single pane: close tab or handle pin state
           e.preventDefault();
           if (canCloseTab) {
             // Multiple tabs: close tab, pin state remains unchanged
@@ -184,6 +202,8 @@ export function useTabShortcuts(disabled = false) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+    // Note: canCloseTab is derived from tabs.length, so it's implicitly covered by 'tabs' dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     disabled,
     tabs,
@@ -191,6 +211,6 @@ export function useTabShortcuts(disabled = false) {
     createTab,
     closeTab,
     setActiveTab,
-    canCloseTab,
+    getPaneCount,
   ]);
 }

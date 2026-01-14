@@ -37,3 +37,17 @@ export const CWD_POLL_INTERVAL_MS = 1000;
 
 /** ESC key escape sequence */
 export const ESC_KEY = "\x1b";
+
+// ============== Pane Split Constants ==============
+
+/** Minimum pane size as ratio (0.0-1.0) */
+export const MIN_PANE_RATIO = 0.1;
+
+/** Maximum pane size as ratio (0.0-1.0) */
+export const MAX_PANE_RATIO = 0.9;
+
+/** Default split ratio (50/50) */
+export const DEFAULT_SPLIT_RATIO = 0.5;
+
+/** Divider width in pixels */
+export const SPLIT_DIVIDER_SIZE = 2;

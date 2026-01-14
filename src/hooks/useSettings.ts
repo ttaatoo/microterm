@@ -19,10 +19,12 @@ interface UseSettingsOptions {
 
 export function useSettings(options: UseSettingsOptions = {}) {
   const { onShortcutError } = options;
-  const [opacity, setOpacity] = useState<number | undefined>(undefined);
-  const [fontSize, setFontSize] = useState<number | undefined>(undefined);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const settingsRef = useRef<Settings | null>(null);
+  // Initialize with values from loadSettings to prevent flash on first render
+  const initialSettings = loadSettings();
+  const [opacity, setOpacity] = useState<number | undefined>(initialSettings.opacity);
+  const [fontSize, setFontSize] = useState<number | undefined>(initialSettings.fontSize);
+  const [showOnboarding, setShowOnboarding] = useState(!initialSettings.onboardingComplete);
+  const settingsRef = useRef<Settings>(initialSettings);
   const currentShortcutRef = useRef<string | null>(null);
   const currentPinShortcutRef = useRef<string | null>(null);
 
@@ -31,27 +33,16 @@ export function useSettings(options: UseSettingsOptions = {}) {
     const initSettings = async () => {
       const settings = loadSettings();
       settingsRef.current = settings;
-      setOpacity(settings.opacity);
-      setFontSize(settings.fontSize);
+      // Note: opacity and fontSize already initialized in useState
+      // Only update if values changed (shouldn't happen in practice)
 
-      // Show onboarding for first-time users
-      if (!settings.onboardingComplete) {
-        setShowOnboarding(true);
-      }
+      // Note: Settings migration from localStorage to Rust backend happens
+      // automatically on app startup via migrateSettingsIfNeeded()
+      // After migration, localStorage settings are preserved for backward compatibility
 
-      // Restore window size from settings
-      if (settings.windowSize) {
-        try {
-          const { getCurrentWindow } = await import("@tauri-apps/api/window");
-          const { LogicalSize } = await import("@tauri-apps/api/dpi");
-          const currentWindow = getCurrentWindow();
-          await currentWindow.setSize(
-            new LogicalSize(settings.windowSize.width, settings.windowSize.height)
-          );
-        } catch (error) {
-          console.error("Failed to restore window size:", error);
-        }
-      }
+      // Note: onboarding state already initialized in useState
+      // Note: Window size is now managed by Rust backend per-screen (screen_config.rs)
+      // No need to restore here - it's handled automatically when window is shown
 
       // Register global shortcut if enabled
       if (settings.shortcutEnabled !== false && settings.globalShortcut) {
@@ -147,15 +138,8 @@ export function useSettings(options: UseSettingsOptions = {}) {
     }
   }, [onShortcutError]);
 
-  const handleResize = useCallback((width: number, height: number) => {
-    const currentSettings = settingsRef.current ?? loadSettings();
-    const newSettings: Settings = {
-      ...currentSettings,
-      windowSize: { width: Math.round(width), height: Math.round(height) },
-    };
-    settingsRef.current = newSettings;
-    saveSettings(newSettings);
-  }, []);
+  // Note: Window size is now managed by Rust backend (screen_config.rs)
+  // handleResize removed - size is saved automatically by backend per screen
 
   const handleOnboardingComplete = useCallback(() => {
     setShowOnboarding(false);
@@ -173,7 +157,6 @@ export function useSettings(options: UseSettingsOptions = {}) {
     fontSize,
     showOnboarding,
     handleSettingsChange,
-    handleResize,
     handleOnboardingComplete,
   };
 }

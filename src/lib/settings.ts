@@ -25,14 +25,10 @@ const DEFAULT_SHORTCUT = "CommandOrControl+Shift+T";
 // Pin shortcut: Cmd+` on macOS, Ctrl+` on other platforms
 const DEFAULT_PIN_SHORTCUT = "CommandOrControl+Backquote";
 
-export interface WindowSize {
-  width: number;
-  height: number;
-}
+// Note: WindowSize interface removed - window size now managed by Rust backend (screen_config.rs)
 
 export interface Settings {
   opacity: number;
-  windowSize?: WindowSize;
   fontSize?: number;
   globalShortcut?: string;
   shortcutEnabled?: boolean;
@@ -43,31 +39,51 @@ export interface Settings {
 
 const defaultSettings: Settings = {
   opacity: DEFAULT_OPACITY,
-  windowSize: { width: DEFAULT_WINDOW_WIDTH, height: DEFAULT_WINDOW_HEIGHT },
+  // windowSize removed - now managed by Rust backend per screen
   fontSize: DEFAULT_FONT_SIZE,
   globalShortcut: DEFAULT_SHORTCUT,
   shortcutEnabled: true,
   pinShortcut: DEFAULT_PIN_SHORTCUT,
   onboardingComplete: false,
-  pinned: false, // Default: not pinned
+  pinned: false,
 };
 
 export function loadSettings(): Settings {
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored) as Partial<Settings>;
+      const parsed = JSON.parse(stored);
+
+      // Validate parsed data is an object
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        console.warn("Invalid settings data format, using defaults");
+        return defaultSettings;
+      }
+
+      // Safely extract values with type checking
+      const opacity =
+        typeof parsed.opacity === "number" ? clampOpacity(parsed.opacity) : DEFAULT_OPACITY;
+      const fontSize =
+        typeof parsed.fontSize === "number" ? clampFontSize(parsed.fontSize) : DEFAULT_FONT_SIZE;
+      // windowSize removed - now managed by Rust backend per screen
+      const globalShortcut =
+        typeof parsed.globalShortcut === "string" ? parsed.globalShortcut : DEFAULT_SHORTCUT;
+      const shortcutEnabled =
+        typeof parsed.shortcutEnabled === "boolean" ? parsed.shortcutEnabled : true;
+      const pinShortcut =
+        typeof parsed.pinShortcut === "string" ? parsed.pinShortcut : DEFAULT_PIN_SHORTCUT;
+      const onboardingComplete =
+        typeof parsed.onboardingComplete === "boolean" ? parsed.onboardingComplete : false;
+      const pinned = typeof parsed.pinned === "boolean" ? parsed.pinned : false;
+
       return {
-        opacity: clampOpacity(parsed.opacity ?? DEFAULT_OPACITY),
-        windowSize: parsed.windowSize
-          ? clampWindowSize(parsed.windowSize)
-          : defaultSettings.windowSize,
-        fontSize: clampFontSize(parsed.fontSize ?? DEFAULT_FONT_SIZE),
-        globalShortcut: parsed.globalShortcut ?? DEFAULT_SHORTCUT,
-        shortcutEnabled: parsed.shortcutEnabled ?? true,
-        pinShortcut: parsed.pinShortcut ?? DEFAULT_PIN_SHORTCUT,
-        onboardingComplete: parsed.onboardingComplete ?? false,
-        pinned: parsed.pinned ?? false,
+        opacity,
+        fontSize,
+        globalShortcut,
+        shortcutEnabled,
+        pinShortcut,
+        onboardingComplete,
+        pinned,
       };
     }
   } catch (error) {
@@ -86,17 +102,26 @@ export function saveSettings(settings: Settings): void {
 }
 
 export function clampOpacity(value: number): number {
+  // Validate number is finite to prevent NaN/Infinity bugs
+  if (!Number.isFinite(value)) {
+    console.warn(`Invalid opacity value: ${value}, using default`);
+    return DEFAULT_OPACITY;
+  }
   return Math.max(MIN_OPACITY, Math.min(MAX_OPACITY, value));
 }
 
-export function clampWindowSize(size: WindowSize): WindowSize {
-  return {
-    width: Math.max(MIN_WINDOW_WIDTH, Math.min(MAX_WINDOW_WIDTH, size.width)),
-    height: Math.max(MIN_WINDOW_HEIGHT, Math.min(MAX_WINDOW_HEIGHT, size.height)),
-  };
-}
+// Note: Window size utility functions removed
+// Window sizing is now fully managed by Rust backend (screen_config.rs)
+// - Per-screen size persistence
+// - Dynamic sizing based on screen resolution
+// - Position calculation (centered + near menubar)
 
 export function clampFontSize(value: number): number {
+  // Validate number is finite to prevent NaN/Infinity bugs
+  if (!Number.isFinite(value)) {
+    console.warn(`Invalid font size value: ${value}, using default`);
+    return DEFAULT_FONT_SIZE;
+  }
   return Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, value));
 }
 

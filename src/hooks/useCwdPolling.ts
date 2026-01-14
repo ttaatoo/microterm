@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { CWD_POLL_INTERVAL_MS } from "@/lib/constants";
 
 /**
@@ -29,24 +29,42 @@ export function useCwdPolling({
   isVisible,
   onTitleChange,
 }: UseCwdPollingOptions): void {
+  // Keep callback ref stable to avoid race conditions with stale callbacks
+  const onTitleChangeRef = useRef(onTitleChange);
+
   useEffect(() => {
-    if (!isVisible || !onTitleChange) return;
+    onTitleChangeRef.current = onTitleChange;
+  }, [onTitleChange]);
+
+  useEffect(() => {
+    // Skip polling entirely if not visible, no session, or no callback
+    // This prevents unnecessary IPC calls when terminal is hidden
+    if (!isVisible || !sessionId || !onTitleChange) return;
 
     let lastCwd = "";
+    let isCancelled = false;
 
     const pollCwd = async () => {
-      if (!sessionId) return;
+      if (isCancelled) return;
 
       try {
         const { invoke } = await import("@tauri-apps/api/core");
+
+        // Check again after async import
+        if (isCancelled) return;
+
         const cwd = await invoke<string | null>("get_pty_cwd", {
           sessionId,
         });
 
+        // Check again after async invoke
+        if (isCancelled) return;
+
         if (cwd && cwd !== lastCwd) {
           lastCwd = cwd;
           const dirName = extractDirName(cwd);
-          onTitleChange(dirName);
+          // Use ref to get latest callback and avoid calling stale references
+          onTitleChangeRef.current?.(dirName);
         }
       } catch {
         // Session may have been closed, ignore errors
@@ -57,6 +75,9 @@ export function useCwdPolling({
     pollCwd();
     const intervalId = setInterval(pollCwd, CWD_POLL_INTERVAL_MS);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
   }, [sessionId, isVisible, onTitleChange]);
 }

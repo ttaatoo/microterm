@@ -4,13 +4,13 @@ import { loadSettings, saveSettings, type Settings } from "./settings";
 /**
  * Sync pin state to Rust backend and notify frontend components.
  * This is the single source of truth for pin state synchronization.
+ * Uses synchronous command instead of async event to prevent race conditions.
  */
 async function syncPinState(pinned: boolean): Promise<void> {
-  const { emit } = await import("@tauri-apps/api/event");
-  // Emit to Rust backend
-  await emit("pin-state-changed", { pinned });
-  // Emit to frontend components (consolidated event emission - H2 fix)
-  await emit("pin-state-updated", { pinned });
+  const { invoke } = await import("@tauri-apps/api/core");
+  // Use command for synchronous update
+  // This command updates Rust state AND emits "pin-state-updated" to frontend components
+  await invoke("set_pinned", { pinned });
 }
 
 /**

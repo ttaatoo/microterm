@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Mock Tauri event module
-const mockEmit = vi.fn().mockResolvedValue(undefined);
-vi.mock("@tauri-apps/api/event", () => ({
-  emit: mockEmit,
+// Mock Tauri core module (for invoke command)
+const mockInvoke = vi.fn().mockResolvedValue(undefined);
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: mockInvoke,
 }));
 
 // Mock settings module
@@ -34,8 +34,8 @@ describe("pin.ts", () => {
       await togglePinState();
 
       expect(mockSaveSettings).toHaveBeenCalledWith({ pinned: true });
-      expect(mockEmit).toHaveBeenCalledWith("pin-state-changed", { pinned: true });
-      expect(mockEmit).toHaveBeenCalledWith("pin-state-updated", { pinned: true });
+      // Should call set_pinned command (which emits pin-state-updated internally)
+      expect(mockInvoke).toHaveBeenCalledWith("set_pinned", { pinned: true });
     });
 
     it("should toggle pin state from true to false", async () => {
@@ -44,8 +44,8 @@ describe("pin.ts", () => {
       await togglePinState();
 
       expect(mockSaveSettings).toHaveBeenCalledWith({ pinned: false });
-      expect(mockEmit).toHaveBeenCalledWith("pin-state-changed", { pinned: false });
-      expect(mockEmit).toHaveBeenCalledWith("pin-state-updated", { pinned: false });
+      // Should call set_pinned command
+      expect(mockInvoke).toHaveBeenCalledWith("set_pinned", { pinned: false });
     });
 
     it("should handle undefined pinned as false", async () => {
@@ -58,7 +58,7 @@ describe("pin.ts", () => {
 
     it("should revert on sync failure", async () => {
       mockLoadSettings.mockReturnValue({ pinned: false, fontSize: 14 });
-      mockEmit.mockRejectedValueOnce(new Error("Sync failed"));
+      mockInvoke.mockRejectedValueOnce(new Error("Sync failed"));
 
       await togglePinState();
 
@@ -76,8 +76,8 @@ describe("pin.ts", () => {
       await setPinState(true);
 
       expect(mockSaveSettings).toHaveBeenCalledWith({ pinned: true });
-      expect(mockEmit).toHaveBeenCalledWith("pin-state-changed", { pinned: true });
-      expect(mockEmit).toHaveBeenCalledWith("pin-state-updated", { pinned: true });
+      // Should call set_pinned command
+      expect(mockInvoke).toHaveBeenCalledWith("set_pinned", { pinned: true });
     });
 
     it("should set pin state to false", async () => {
@@ -86,7 +86,8 @@ describe("pin.ts", () => {
       await setPinState(false);
 
       expect(mockSaveSettings).toHaveBeenCalledWith({ pinned: false });
-      expect(mockEmit).toHaveBeenCalledWith("pin-state-changed", { pinned: false });
+      // Should call set_pinned command
+      expect(mockInvoke).toHaveBeenCalledWith("set_pinned", { pinned: false });
     });
 
     it("should skip if already in desired state", async () => {
@@ -95,12 +96,12 @@ describe("pin.ts", () => {
       await setPinState(true);
 
       expect(mockSaveSettings).not.toHaveBeenCalled();
-      expect(mockEmit).not.toHaveBeenCalled();
+      expect(mockInvoke).not.toHaveBeenCalled();
     });
 
     it("should revert on sync failure", async () => {
       mockLoadSettings.mockReturnValue({ pinned: false, opacity: 0.9 });
-      mockEmit.mockRejectedValueOnce(new Error("Sync failed"));
+      mockInvoke.mockRejectedValueOnce(new Error("Sync failed"));
 
       await setPinState(true);
 

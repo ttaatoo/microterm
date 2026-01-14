@@ -5,6 +5,7 @@ import {
   PTY_RESTART_DELAY_MS,
   PTY_RETRY_DELAY_MS,
 } from "@/lib/constants";
+import { ensureValidDimensions } from "@/lib/ptyUtils";
 
 interface PtyOutput {
   session_id: string;
@@ -18,12 +19,14 @@ interface PtyExit {
 
 interface UsePtySessionOptions {
   terminal: Terminal | null;
+  existingSessionId?: string | null;
   onSessionCreated?: (sessionId: string) => void;
 }
 
 interface UsePtySessionReturn {
   sessionIdRef: React.MutableRefObject<string | null>;
   createSession: (cols: number, rows: number) => Promise<void>;
+  reuseSession: (existingSessionId: string, cols: number, rows: number) => Promise<void>;
   writeToSession: (data: string) => Promise<void>;
   resizeSession: (cols: number, rows: number) => Promise<void>;
   closeSession: () => Promise<void>;
@@ -36,6 +39,7 @@ interface UsePtySessionReturn {
  */
 export function usePtySession({
   terminal,
+  existingSessionId: _existingSessionId,
   onSessionCreated,
 }: UsePtySessionOptions): UsePtySessionReturn {
   const sessionIdRef = useRef<string | null>(null);
@@ -46,11 +50,13 @@ export function usePtySession({
     async (cols: number, rows: number, retryCount = 0): Promise<void> => {
       if (!terminal) return;
 
+      const { cols: validCols, rows: validRows } = ensureValidDimensions(cols, rows);
+
       try {
         const { invoke } = await import("@tauri-apps/api/core");
         const sessionId = await invoke<string>("create_pty_session", {
-          cols,
-          rows,
+          cols: validCols,
+          rows: validRows,
         });
         sessionIdRef.current = sessionId;
         onSessionCreated?.(sessionId);
@@ -72,6 +78,28 @@ export function usePtySession({
       }
     },
     [terminal, onSessionCreated]
+  );
+
+  const reuseSession = useCallback(
+    async (existingSessionId: string, cols: number, rows: number): Promise<void> => {
+      if (!terminal) return;
+
+      sessionIdRef.current = existingSessionId;
+      const { cols: validCols, rows: validRows } = ensureValidDimensions(cols, rows);
+
+      try {
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("resize_pty", {
+          sessionId: existingSessionId,
+          cols: validCols,
+          rows: validRows,
+        });
+      } catch (error) {
+        console.warn("[PTY] Failed to resize existing session, creating new one:", error);
+        await createSession(cols, rows);
+      }
+    },
+    [terminal, createSession]
   );
 
   const writeToSession = useCallback(async (data: string): Promise<void> => {
@@ -106,12 +134,14 @@ export function usePtySession({
   const resizeSession = useCallback(async (cols: number, rows: number): Promise<void> => {
     if (!sessionIdRef.current) return;
 
+    const { cols: validCols, rows: validRows } = ensureValidDimensions(cols, rows);
+
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("resize_pty", {
         sessionId: sessionIdRef.current,
-        cols,
-        rows,
+        cols: validCols,
+        rows: validRows,
       });
     } catch (error) {
       console.error("[PTY] Resize failed:", error);
@@ -172,6 +202,7 @@ export function usePtySession({
   return {
     sessionIdRef,
     createSession,
+    reuseSession,
     writeToSession,
     resizeSession,
     closeSession,
