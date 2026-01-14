@@ -4,7 +4,9 @@ export const xterminalContainer = style({
   width: "100%",
   height: "100%",
   minHeight: 0,
-  background: "transparent",
+  // Default background prevents transparent flash during terminal init
+  // Inline style will override this with user's opacity setting
+  background: "rgba(0, 0, 0, 0.95)",
   overflow: "hidden",
   position: "absolute",
   top: 0,
@@ -13,9 +15,13 @@ export const xterminalContainer = style({
   bottom: 0,
 });
 
-// Apply padding via xterm's internal structure
+// Apply minimal padding via xterm's internal structure
+// Use uniform padding to avoid height calculation issues
+// The FitAddon calculates available space by subtracting this padding
 globalStyle(`${xterminalContainer} .xterm`, {
   padding: "8px",
+  height: "100%",
+  boxSizing: "border-box",
 });
 
 // Hide default scrollbar, only show xterm's
@@ -59,4 +65,14 @@ export const terminalHidden = style({
 export const terminalVisible = style({
   visibility: "visible",
   pointerEvents: "auto",
+});
+
+// Active pane indicator - subtle border
+export const paneActive = style({
+  boxShadow: "none",
+});
+
+// Inactive pane - slightly dimmed
+export const paneInactive = style({
+  // No visual change for inactive panes for now
 });

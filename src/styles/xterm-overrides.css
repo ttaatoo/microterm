@@ -6,6 +6,17 @@
   padding: 16px;
 }
 
+/* Remove focus outline that causes blue bottom border */
+.xterminal-container .xterm:focus,
+.xterminal-container .xterm-helper-textarea:focus {
+  outline: none;
+}
+
+/* Remove any default focus styles from xterm screen */
+.xterminal-container .xterm-screen {
+  outline: none;
+}
+
 /* Hide default scrollbar, only show xterm's */
 .xterminal-container .xterm-viewport::-webkit-scrollbar {
   width: 8px;
@@ -24,5 +35,10 @@
 
 .xterminal-container .xterm-viewport::-webkit-scrollbar-thumb:hover {
   background: rgba(92, 99, 112, 0.8);
+}
+
+/* Custom narrow cursor - override default block cursor width */
+.xterminal-container .xterm-cursor-block {
+  width: 1px !important;
 }
 

@@ -16,7 +16,6 @@ describe("TabContext", () => {
       expect(result.current.tabs).toHaveLength(1);
       expect(result.current.tabs[0].number).toBe(1);
       expect(result.current.tabs[0].title).toBe("1");
-      expect(result.current.tabs[0].sessionId).toBeNull();
     });
 
     it("should have the first tab as active", () => {
@@ -27,8 +26,8 @@ describe("TabContext", () => {
 
     it("should not allow closing the only tab", () => {
       const { result } = renderHook(() => useTabContext(), { wrapper });
-
-      expect(result.current.canCloseTab).toBe(false);
+      // canCloseTab removed from context - consumers compute tabs.length > 1 locally
+      expect(result.current.tabs.length > 1).toBe(false);
     });
   });
 
@@ -233,38 +232,6 @@ describe("TabContext", () => {
     });
   });
 
-  describe("updateTabSessionId", () => {
-    it("should update the session id for a tab", () => {
-      const { result } = renderHook(() => useTabContext(), { wrapper });
-
-      const tabId = result.current.tabs[0].id;
-      const sessionId = "session-123";
-
-      act(() => {
-        result.current.updateTabSessionId(tabId, sessionId);
-      });
-
-      expect(result.current.tabs[0].sessionId).toBe(sessionId);
-    });
-
-    it("should not affect other tabs", () => {
-      const { result } = renderHook(() => useTabContext(), { wrapper });
-
-      act(() => {
-        result.current.createTab();
-      });
-
-      const firstTabId = result.current.tabs[0].id;
-      const secondTabId = result.current.tabs[1].id;
-
-      act(() => {
-        result.current.updateTabSessionId(firstTabId, "session-1");
-      });
-
-      expect(result.current.tabs.find((t) => t.id === secondTabId)?.sessionId).toBeNull();
-    });
-  });
-
   describe("updateTabTitle", () => {
     it("should update the title for a tab", () => {
       const { result } = renderHook(() => useTabContext(), { wrapper });
@@ -297,11 +264,13 @@ describe("TabContext", () => {
     });
   });
 
-  describe("canCloseTab", () => {
+  // canCloseTab tests removed - consumers now compute tabs.length > 1 locally
+  // This is a performance optimization to reduce context re-renders
+  describe("tab close eligibility (computed locally)", () => {
     it("should be false with one tab", () => {
       const { result } = renderHook(() => useTabContext(), { wrapper });
-
-      expect(result.current.canCloseTab).toBe(false);
+      const canCloseTab = result.current.tabs.length > 1;
+      expect(canCloseTab).toBe(false);
     });
 
     it("should be true with multiple tabs", () => {
@@ -311,24 +280,25 @@ describe("TabContext", () => {
         result.current.createTab();
       });
 
-      expect(result.current.canCloseTab).toBe(true);
+      const canCloseTab = result.current.tabs.length > 1;
+      expect(canCloseTab).toBe(true);
     });
 
     it("should update when tabs change", () => {
       const { result } = renderHook(() => useTabContext(), { wrapper });
 
-      expect(result.current.canCloseTab).toBe(false);
+      expect(result.current.tabs.length > 1).toBe(false);
 
       act(() => {
         result.current.createTab();
       });
-      expect(result.current.canCloseTab).toBe(true);
+      expect(result.current.tabs.length > 1).toBe(true);
 
       // Close the new tab
       act(() => {
         result.current.closeTab(result.current.tabs[1].id);
       });
-      expect(result.current.canCloseTab).toBe(false);
+      expect(result.current.tabs.length > 1).toBe(false);
     });
   });
 

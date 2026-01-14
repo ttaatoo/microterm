@@ -3,14 +3,13 @@ import { slideDown } from "../../styles/animations.css";
 
 export const mainContainer = style({
   width: "100%",
-  height: "100vh",
+  height: "100%", // Changed from 100vh to 100% to properly fit Tauri window content area
   display: "flex",
   flexDirection: "column",
-  background: "rgba(0, 0, 0, 0.95)",
+  // Background removed - controlled via inline style for dynamic opacity
   overflow: "hidden",
   position: "relative",
   borderRadius: "10px",
-  border: "1px solid rgba(255, 255, 255, 0.1)",
   boxShadow: `
     0 0 0 1px rgba(0, 0, 0, 0.3),
     0 8px 32px rgba(0, 0, 0, 0.5),
@@ -23,8 +22,37 @@ export const mainContainer = style({
 export const terminalArea = style({
   flex: 1,
   position: "relative",
-  overflow: "hidden",
+  overflow: "visible", // Changed from hidden to allow content to extend into padding
   minHeight: 0,
+  // Add bottom padding to compensate for parent's borderRadius (10px)
+  // This prevents the rounded corner from creating a visible gap
+  paddingBottom: "10px",
+});
+
+export const tabContainer = style({
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  // Inherit parent's bottom border radius
+  borderBottomLeftRadius: "10px",
+  borderBottomRightRadius: "10px",
+  overflow: "hidden", // Clip content to rounded corners
+});
+
+export const tabHidden = style({
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  visibility: "hidden",
+  pointerEvents: "none",
+  // Inherit parent's bottom border radius
+  borderBottomLeftRadius: "10px",
+  borderBottomRightRadius: "10px",
+  overflow: "hidden", // Clip content to rounded corners
 });
 
 export const settingsButton = style({

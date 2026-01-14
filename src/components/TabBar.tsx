@@ -217,8 +217,10 @@ const TabItem = memo(function TabItem({
 });
 
 export default function TabBar({ settingsButton }: TabBarProps) {
-  const { tabs, activeTabId, createTab, closeTab, setActiveTab, updateTabTitle, canCloseTab } =
+  const { tabs, activeTabId, createTab, closeTab, setActiveTab, updateTabTitle } =
     useTabContext();
+  // Compute locally instead of from context to reduce re-renders
+  const canCloseTab = tabs.length > 1;
   const { pinned, togglePin } = usePinState();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const prevTabCountRef = useRef(tabs.length);

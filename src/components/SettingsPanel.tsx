@@ -90,8 +90,10 @@ export default function SettingsPanel({ isOpen, onClose, onSettingsChange }: Set
   const [launchAtLogin, setLaunchAtLogin] = useState(false);
   const [launchAtLoginLoading, setLaunchAtLoginLoading] = useState(true);
 
-  // Initialize state from localStorage on mount
+  // Initialize state from localStorage on mount and when panel opens
   useEffect(() => {
+    if (!isOpen) return;
+
     const settings = loadSettings();
     setOpacity(settings.opacity);
     setFontSize(settings.fontSize ?? 13);
@@ -99,21 +101,23 @@ export default function SettingsPanel({ isOpen, onClose, onSettingsChange }: Set
     setShortcutEnabled(settings.shortcutEnabled ?? true);
     setPinShortcut(settings.pinShortcut ?? DEFAULT_PIN_SHORTCUT);
 
-    // Check autostart status
-    (async () => {
-      try {
-        const autostart = await getAutostart();
-        if (autostart) {
-          const enabled = await autostart.isEnabled();
-          setLaunchAtLogin(enabled);
+    // Check autostart status only if not already loaded
+    if (launchAtLoginLoading) {
+      (async () => {
+        try {
+          const autostart = await getAutostart();
+          if (autostart) {
+            const enabled = await autostart.isEnabled();
+            setLaunchAtLogin(enabled);
+          }
+        } catch (error) {
+          console.error("Failed to check autostart status:", error);
+        } finally {
+          setLaunchAtLoginLoading(false);
         }
-      } catch (error) {
-        console.error("Failed to check autostart status:", error);
-      } finally {
-        setLaunchAtLoginLoading(false);
-      }
-    })();
-  }, []);
+      })();
+    }
+  }, [isOpen, launchAtLoginLoading]);
 
   // Close on ESC key press (but not when recording shortcut)
   useEffect(() => {

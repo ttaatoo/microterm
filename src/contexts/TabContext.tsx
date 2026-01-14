@@ -11,7 +11,6 @@ export interface Tab {
   id: string;
   title: string;
   number: number;
-  sessionId: string | null;
   titleManuallySet?: boolean;
 }
 
@@ -21,9 +20,7 @@ interface TabContextValue {
   createTab: () => string;
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
-  updateTabSessionId: (tabId: string, sessionId: string) => void;
   updateTabTitle: (tabId: string, title: string, manuallySet?: boolean) => void;
-  canCloseTab: boolean;
 }
 
 const TabContext = createContext<TabContextValue | null>(null);
@@ -38,7 +35,6 @@ const INITIAL_TABS: Tab[] = [{
   id: INITIAL_TAB_ID,
   title: "1",
   number: 1,
-  sessionId: null,
 }];
 
 // Find the smallest available terminal number
@@ -65,7 +61,6 @@ export function TabProvider({ children }: { children: ReactNode }) {
         id: newTabId,
         title: String(nextNum),
         number: nextNum,
-        sessionId: null,
       };
       return [...prev, newTab];
     });
@@ -100,14 +95,6 @@ export function TabProvider({ children }: { children: ReactNode }) {
     setActiveTabId(tabId);
   }, []);
 
-  const updateTabSessionId = useCallback((tabId: string, sessionId: string) => {
-    setTabs((prev) =>
-      prev.map((tab) =>
-        tab.id === tabId ? { ...tab, sessionId } : tab
-      )
-    );
-  }, []);
-
   const updateTabTitle = useCallback((tabId: string, title: string, manuallySet = false) => {
     setTabs((prev) => {
       // If manuallySet is false (terminal update), check if title was manually set
@@ -124,9 +111,10 @@ export function TabProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const canCloseTab = tabs.length > 1;
-
   // Memoize context value to prevent unnecessary re-renders of consumers
+  // Note: canCloseTab is removed from context - consumers should compute tabs.length > 1 locally
+  // Stable callbacks (createTab, closeTab, setActiveTab, updateTabTitle) are omitted from deps
+  // because they're wrapped in useCallback with no dependencies and never change
   const value = useMemo<TabContextValue>(
     () => ({
       tabs,
@@ -134,11 +122,9 @@ export function TabProvider({ children }: { children: ReactNode }) {
       createTab,
       closeTab,
       setActiveTab,
-      updateTabSessionId,
       updateTabTitle,
-      canCloseTab,
     }),
-    [tabs, activeTabId, createTab, closeTab, setActiveTab, updateTabSessionId, updateTabTitle, canCloseTab]
+    [tabs, activeTabId, createTab, closeTab, setActiveTab, updateTabTitle]
   );
 
   return <TabContext.Provider value={value}>{children}</TabContext.Provider>;

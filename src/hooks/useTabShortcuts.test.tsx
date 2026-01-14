@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useTabShortcuts } from "./useTabShortcuts";
 import { TabProvider, useTabContext } from "@/contexts/TabContext";
+import { PaneProvider } from "@/contexts/PaneContext";
 import type { ReactNode } from "react";
 
 // Mock Tauri APIs
@@ -15,7 +16,9 @@ vi.mock("@/lib/tauri", () => ({
 
 // Wrapper for testing hooks with context
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <TabProvider>{children}</TabProvider>
+  <TabProvider>
+    <PaneProvider>{children}</PaneProvider>
+  </TabProvider>
 );
 
 // Custom hook that combines useTabShortcuts and useTabContext for testing

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { PhysicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
 import * as styles from "./ResizeHandle.css";
 
 type ResizePosition = "bottom-left" | "bottom-right";
@@ -24,34 +26,12 @@ export default function ResizeHandle({
   const startPosRef = useRef({ x: 0, y: 0 });
   const startSizeRef = useRef({ width: 0, height: 0 });
   const startWindowPosRef = useRef({ x: 0, y: 0 });
-  const tauriApisRef = useRef<{
-    getCurrentWindow: typeof import("@tauri-apps/api/window").getCurrentWindow;
-    PhysicalSize: typeof import("@tauri-apps/api/dpi").PhysicalSize;
-    PhysicalPosition: typeof import("@tauri-apps/api/dpi").PhysicalPosition;
-  } | null>(null);
-
-  // Pre-load Tauri APIs
-  useEffect(() => {
-    const loadApis = async () => {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const { PhysicalSize, PhysicalPosition } = await import("@tauri-apps/api/dpi");
-        tauriApisRef.current = { getCurrentWindow, PhysicalSize, PhysicalPosition };
-      } catch (error) {
-        console.error("Failed to load Tauri APIs:", error);
-      }
-    };
-    loadApis();
-  }, []);
 
   const handleMouseDown = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!tauriApisRef.current) return;
-
     try {
-      const { getCurrentWindow } = tauriApisRef.current;
       const currentWindow = getCurrentWindow();
       const size = await currentWindow.innerSize();
       const windowPos = await currentWindow.outerPosition();
@@ -70,8 +50,6 @@ export default function ResizeHandle({
     if (!isResizing) return;
 
     const handleMouseMove = async (e: MouseEvent) => {
-      if (!tauriApisRef.current) return;
-
       const deltaX = e.screenX - startPosRef.current.x;
       const deltaY = e.screenY - startPosRef.current.y;
 
@@ -112,7 +90,6 @@ export default function ResizeHandle({
       newWidth = clampedWidth;
 
       try {
-        const { getCurrentWindow, PhysicalSize, PhysicalPosition } = tauriApisRef.current;
         const currentWindow = getCurrentWindow();
 
         // For left resize, set position first to avoid flicker
