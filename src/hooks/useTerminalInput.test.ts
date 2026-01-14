@@ -39,13 +39,13 @@ vi.mock("@tauri-apps/api/event", () => ({
 describe("useTerminalInput", () => {
   let mockTerminal: Terminal;
   let mockPtyManager: PtyManager;
-  let mockOnData: ReturnType<typeof vi.fn>;
+  let mockOnData: (data: string) => void;
 
   beforeEach(() => {
-    mockOnData = vi.fn();
+    mockOnData = vi.fn() as (data: string) => void;
     mockTerminal = {
       onData: vi.fn((handler) => {
-        mockOnData.mockImplementation(handler);
+        vi.mocked(mockOnData).mockImplementation(handler);
         return { dispose: vi.fn() };
       }),
     } as unknown as Terminal;
@@ -181,7 +181,7 @@ describe("useTerminalInput", () => {
   it("should not hide window on double ESC when pinned", async () => {
     (window as any).__TAURI__ = {};
     const { loadSettings } = await import("@/lib/settings");
-    vi.mocked(loadSettings).mockReturnValue({ pinned: true });
+    vi.mocked(loadSettings).mockReturnValue({ opacity: 0.9, pinned: true });
 
     renderHook(() =>
       useTerminalInput({

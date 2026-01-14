@@ -26,11 +26,11 @@ vi.mock("@/lib/ptyUtils", () => ({
 
 describe("PtyManager", () => {
   let mockTerminal: Terminal;
-  let mockOnSessionCreated: ReturnType<typeof vi.fn>;
+  let mockOnSessionCreated: ((sessionId: string) => void) | undefined;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    mockOnSessionCreated = vi.fn();
+    mockOnSessionCreated = vi.fn() as (sessionId: string) => void;
     mockTerminal = {
       cols: 80,
       rows: 24,

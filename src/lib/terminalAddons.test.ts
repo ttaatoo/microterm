@@ -93,12 +93,8 @@ describe("setupTerminalAddons", () => {
     const addons = setupTerminalAddons(mockTerminal);
 
     // Simulate web link click with meta key
-    const _mockEvent = {
-      metaKey: true,
-      ctrlKey: false,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as MouseEvent;
+    // Note: The event is handled internally by WebLinksAddon
+    // We verify the addon was created and openUrl is available
 
     // The WebLinksAddon callback is created during setup
     // We need to access it through the addon instance

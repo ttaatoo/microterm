@@ -4,6 +4,7 @@ import { useTerminalResize } from "./useTerminalResize";
 import { PtyManager } from "@/lib/ptyManager";
 import type { Terminal } from "@xterm/xterm";
 import { createRef } from "react";
+import type { setupTerminalAddons } from "@/lib/terminalAddons";
 
 // Mock ResizeObserver
 class MockResizeObserver {
@@ -17,8 +18,8 @@ global.ResizeObserver = MockResizeObserver as any;
 describe("useTerminalResize", () => {
   let mockTerminal: Terminal;
   let mockPtyManager: PtyManager;
-  let mockFitAddon: { fit: ReturnType<typeof vi.fn> };
-  let containerRef: React.RefObject<HTMLDivElement>;
+  let mockFitAddon: ReturnType<typeof setupTerminalAddons>["fitAddon"];
+  let containerRef: React.RefObject<HTMLDivElement | null>;
   let mockOnResize: ReturnType<typeof vi.fn>;
   let mockDisposeResizeListener: ReturnType<typeof vi.fn>;
 
@@ -36,7 +37,10 @@ describe("useTerminalResize", () => {
 
     mockFitAddon = {
       fit: vi.fn(),
-    };
+      activate: vi.fn(),
+      dispose: vi.fn(),
+      proposeDimensions: vi.fn(),
+    } as ReturnType<typeof setupTerminalAddons>["fitAddon"];
 
     mockPtyManager = {
       getSessionId: vi.fn().mockReturnValue("test-session-id"),
@@ -168,7 +172,7 @@ describe("useTerminalResize", () => {
     });
 
     act(() => {
-      mockOnResize({ cols: 100, rows: 30 });
+      (mockOnResize as any)({ cols: 100, rows: 30 });
     });
 
     await waitFor(() => {
@@ -229,8 +233,8 @@ describe("useTerminalResize", () => {
       { initialProps: { isVisible: false } }
     );
 
-    mockFitAddon.fit.mockClear();
-    mockPtyManager.resize.mockClear();
+    vi.mocked(mockFitAddon.fit).mockClear();
+    vi.mocked(mockPtyManager.resize).mockClear();
 
     rerender({ isVisible: true });
 
@@ -257,7 +261,7 @@ describe("useTerminalResize", () => {
       })
     );
 
-    mockFitAddon.fit.mockClear();
+    vi.mocked(mockFitAddon?.fit).mockClear();
 
     // Wait a bit to ensure no fit call happens
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -293,7 +297,10 @@ describe("useTerminalResize", () => {
 
     unmount();
 
-    expect(resizeObserverInstance?.disconnect).toHaveBeenCalled();
+    if (resizeObserverInstance) {
+      const instance = resizeObserverInstance as MockResizeObserver;
+      expect(instance.disconnect).toHaveBeenCalled();
+    }
     expect(mockDisposeResizeListener).toHaveBeenCalled();
 
     global.ResizeObserver = OriginalResizeObserver;

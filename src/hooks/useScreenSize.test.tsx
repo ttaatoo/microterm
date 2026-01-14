@@ -153,7 +153,7 @@ describe("useScreenSize", () => {
     });
 
     it("should warn on Tauri failure", async () => {
-      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation();
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       mockCurrentMonitor.mockRejectedValue(new Error("Test error"));
 
       renderHook(() => useScreenSize());

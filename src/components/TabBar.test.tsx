@@ -66,8 +66,6 @@ describe("TabBar", () => {
       closeTab: mockCloseTab,
       setActiveTab: mockSetActiveTab,
       updateTabTitle: mockUpdateTabTitle,
-      setActivePane: vi.fn(),
-      updateTabSessionId: vi.fn(),
     });
 
     vi.mocked(usePinState).mockReturnValue({
@@ -143,8 +141,6 @@ describe("TabBar", () => {
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
         updateTabTitle: mockUpdateTabTitle,
-        setActivePane: vi.fn(),
-        updateTabSessionId: vi.fn(),
       });
 
       render(<TabBar />);
@@ -395,8 +391,6 @@ describe("TabBar", () => {
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
         updateTabTitle: mockUpdateTabTitle,
-        setActivePane: vi.fn(),
-        updateTabSessionId: vi.fn(),
       });
 
       rerender(<TabBar />);
@@ -608,8 +602,6 @@ describe("TabBar", () => {
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
         updateTabTitle: mockUpdateTabTitle,
-        setActivePane: vi.fn(),
-        updateTabSessionId: vi.fn(),
       });
 
       rerender(<TabBar />);
@@ -655,8 +647,6 @@ describe("TabBar", () => {
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
         updateTabTitle: mockUpdateTabTitle,
-        setActivePane: vi.fn(),
-        updateTabSessionId: vi.fn(),
       });
 
       render(<TabBar />);
@@ -680,8 +670,6 @@ describe("TabBar", () => {
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
         updateTabTitle: mockUpdateTabTitle,
-        setActivePane: vi.fn(),
-        updateTabSessionId: vi.fn(),
       });
 
       render(<TabBar />);

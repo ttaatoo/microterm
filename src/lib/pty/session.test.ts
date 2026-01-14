@@ -40,7 +40,7 @@ import { getListen, ensurePreload } from "@/lib/tauri/preload";
 
 describe("PtySession", () => {
   let mockTerminal: Partial<Terminal>;
-  let mockListen: ReturnType<typeof vi.fn>;
+  let mockListen: any;
   let mockUnlisten: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -415,7 +415,7 @@ describe("PtySession", () => {
       )?.[1];
 
       // Clear mock to track only the exit message write
-      vi.mocked(mockTerminal.write).mockClear();
+      vi.mocked(mockTerminal.write!).mockClear();
 
       // Trigger exit event with matching session_id
       exitListener({
@@ -549,7 +549,7 @@ describe("PtySession", () => {
       });
 
       // Should not write to terminal after close
-      const writeCalls = vi.mocked(mockTerminal.write).mock.calls;
+      const writeCalls = vi.mocked(mockTerminal.write!).mock.calls;
       expect(writeCalls).not.toContainEqual(["late data"]);
     });
   });

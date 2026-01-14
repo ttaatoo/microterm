@@ -49,7 +49,7 @@ describe("window.ts", () => {
     });
 
     it("should return null on error and log error", async () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation();
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       vi.mocked(checkTauriAvailable).mockReturnValue(true);
       vi.mocked(invoke).mockRejectedValue(new Error("Failed to get screen"));
 
@@ -141,7 +141,7 @@ describe("window.ts", () => {
     });
 
     it("should return null on error and log error", async () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation();
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       vi.mocked(checkTauriAvailable).mockReturnValue(true);
       vi.mocked(invoke).mockRejectedValue(new Error("Failed to adjust size"));
 
@@ -243,7 +243,7 @@ describe("window.ts", () => {
     });
 
     it("should return false on error and log error", async () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation();
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       vi.mocked(checkTauriAvailable).mockReturnValue(true);
       vi.mocked(invoke).mockRejectedValue(
         new Error("Failed to ensure visible")
@@ -318,7 +318,7 @@ describe("window.ts", () => {
 
       // Failure
       vi.mocked(invoke).mockRejectedValueOnce(new Error("Adjust failed"));
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation();
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const adjusted = await adjustWindowSize(1920, 1080);
       expect(adjusted).toBeNull();

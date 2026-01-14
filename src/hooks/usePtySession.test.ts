@@ -23,11 +23,11 @@ vi.mock("@/lib/ptyUtils", () => ({
 
 describe("usePtySession", () => {
   let mockTerminal: Terminal;
-  let mockOnSessionCreated: ReturnType<typeof vi.fn>;
+  let mockOnSessionCreated: ((sessionId: string) => void) | undefined;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    mockOnSessionCreated = vi.fn();
+    mockOnSessionCreated = vi.fn() as (sessionId: string) => void;
     mockTerminal = {
       cols: 80,
       rows: 24,
@@ -324,9 +324,10 @@ describe("usePtySession", () => {
     expect(cleanup).toBeDefined();
 
     // Test cleanup
+    expect(cleanup).toBeDefined();
     if (cleanup) {
       act(() => {
-        cleanup();
+        cleanup!();
       });
       expect(mockUnlistenOutput).toHaveBeenCalled();
       expect(mockUnlistenExit).toHaveBeenCalled();
@@ -356,9 +357,10 @@ describe("usePtySession", () => {
       await result.current.setupListeners();
     });
 
+    expect(outputCallback).toBeDefined();
     if (outputCallback) {
       act(() => {
-        outputCallback({
+        outputCallback!({
           payload: {
             session_id: "test-session-id",
             data: "test output",
@@ -394,9 +396,9 @@ describe("usePtySession", () => {
       await result.current.setupListeners();
     });
 
-    if (exitCallback) {
+    if (exitCallback && typeof exitCallback === 'function') {
       act(() => {
-        exitCallback({
+        exitCallback!({
           payload: {
             session_id: "test-session-id",
             exit_code: 0,

@@ -203,7 +203,7 @@ describe("getTerminalTheme", () => {
         firstRound.push(getTerminalTheme(i / 10));
       }
 
-      const secondRound = [];
+      const secondRound: ReturnType<typeof getTerminalTheme>[] = [];
       for (let i = 0; i <= 10; i++) {
         secondRound.push(getTerminalTheme(i / 10));
       }

@@ -46,7 +46,7 @@ describe("shortcuts.ts", () => {
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
       mockRegister.mockImplementation((_shortcut: string, callback: any) => {
-        registeredCallback = callback;
+        registeredCallback = callback as (event: { state: string }) => Promise<void>;
         return Promise.resolve();
       });
 
@@ -56,7 +56,7 @@ describe("shortcuts.ts", () => {
 
       // Simulate shortcut trigger
       if (registeredCallback) {
-        await registeredCallback({ state: "Pressed" });
+        await (registeredCallback as (event: { state: string }) => Promise<void>)({ state: "Pressed" });
       }
 
       expect(mockEmit).toHaveBeenCalledWith("toggle-window", {});
@@ -72,7 +72,7 @@ describe("shortcuts.ts", () => {
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
       mockRegister.mockImplementation((_shortcut: string, callback: any) => {
-        registeredCallback = callback;
+        registeredCallback = callback as (event: { state: string }) => Promise<void>;
         return Promise.resolve();
       });
 
@@ -80,7 +80,7 @@ describe("shortcuts.ts", () => {
 
       // Simulate Released state
       if (registeredCallback) {
-        await registeredCallback({ state: "Released" });
+        await (registeredCallback as (event: { state: string }) => Promise<void>)({ state: "Released" });
       }
 
       expect(mockEmit).not.toHaveBeenCalled();
@@ -111,7 +111,7 @@ describe("shortcuts.ts", () => {
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
       mockRegister.mockImplementation((_shortcut: string, callback: any) => {
-        registeredCallback = callback;
+        registeredCallback = callback as (event: { state: string }) => Promise<void>;
         return Promise.resolve();
       });
 
@@ -121,7 +121,7 @@ describe("shortcuts.ts", () => {
 
       // Simulate shortcut trigger
       if (registeredCallback) {
-        await registeredCallback({ state: "Pressed" });
+        await (registeredCallback as (event: { state: string }) => Promise<void>)({ state: "Pressed" });
       }
 
       expect(mockEmit).not.toHaveBeenCalled(); // Should NOT emit toggle-window
@@ -137,14 +137,14 @@ describe("shortcuts.ts", () => {
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
       mockRegister.mockImplementation((_shortcut: string, callback: any) => {
-        registeredCallback = callback;
+        registeredCallback = callback as (event: { state: string }) => Promise<void>;
         return Promise.resolve();
       });
 
       await registerGlobalShortcutNoToggle("CommandOrControl+K", onTrigger);
 
       if (registeredCallback) {
-        await registeredCallback({ state: "Pressed" });
+        await (registeredCallback as (event: { state: string }) => Promise<void>)({ state: "Pressed" });
       }
 
       expect(onTrigger).toHaveBeenCalled();
@@ -233,7 +233,7 @@ describe("shortcuts.ts", () => {
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
       mockRegister.mockImplementation((_shortcut: string, callback: any) => {
-        registeredCallback = callback;
+        registeredCallback = callback as (event: { state: string }) => Promise<void>;
         return Promise.resolve();
       });
 
@@ -243,7 +243,7 @@ describe("shortcuts.ts", () => {
 
       // Simulate shortcut trigger
       if (registeredCallback) {
-        await registeredCallback({ state: "Pressed" });
+        await (registeredCallback as (event: { state: string }) => Promise<void>)({ state: "Pressed" });
       }
 
       expect(onTrigger).toHaveBeenCalled();
@@ -258,14 +258,14 @@ describe("shortcuts.ts", () => {
       let registeredCallback: ((event: { state: string }) => Promise<void>) | null = null;
 
       mockRegister.mockImplementation((_shortcut: string, callback: any) => {
-        registeredCallback = callback;
+        registeredCallback = callback as (event: { state: string }) => Promise<void>;
         return Promise.resolve();
       });
 
       await registerLocalShortcut("F2", onTrigger);
 
       if (registeredCallback) {
-        await registeredCallback({ state: "Released" });
+        await (registeredCallback as (event: { state: string }) => Promise<void>)({ state: "Released" });
       }
 
       expect(onTrigger).not.toHaveBeenCalled();

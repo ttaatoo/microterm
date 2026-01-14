@@ -19,7 +19,7 @@ describe("shell.ts", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    windowOpenSpy = vi.spyOn(window, "open").mockImplementation();
+    windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
   });
 
   afterEach(() => {

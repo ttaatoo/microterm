@@ -83,7 +83,7 @@ describe("useTerminalSearch", () => {
     getActiveTerminal = vi.fn(() => null);
     const { result } = renderHook(() => useTerminalSearch({ getActiveTerminal }));
     act(() => {
-      result.current.handleSearch("test", { caseSensitive: false });
+      result.current.handleSearch("test", { caseSensitive: false, wholeWord: false, regex: false });
       result.current.handleSearchNext();
       result.current.handleSearchPrevious();
       result.current.handleSearchClose();

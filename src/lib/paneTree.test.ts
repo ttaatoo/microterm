@@ -15,6 +15,7 @@ import {
   findNextPaneAfterClose,
   type PaneLeaf,
   type PaneBranch,
+  type PaneNode,
 } from "./paneTree";
 
 describe("paneTree", () => {

@@ -9,7 +9,7 @@ vi.mock("./preload", () => ({
 import { getInvoke } from "./preload";
 
 describe("PTY Tauri Commands", () => {
-  let mockInvoke: ReturnType<typeof vi.fn>;
+  let mockInvoke: any;
 
   beforeEach(() => {
     mockInvoke = vi.fn();

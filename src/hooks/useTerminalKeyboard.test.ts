@@ -98,10 +98,17 @@ describe("useTerminalKeyboard", () => {
     });
 
     const callArgs = mockCreateWordMovementHandler.mock.calls[0];
-    const getSessionId = callArgs[1];
+    expect(callArgs).toBeDefined();
+    expect(callArgs).toBeTruthy();
+    expect(callArgs.length).toBeGreaterThan(1);
+    // TypeScript doesn't narrow the type after expect, so we use a type assertion
+    const getSessionId = (callArgs as unknown[])[1] as (() => string) | undefined;
 
-    expect(getSessionId()).toBe("test-session-id");
-    expect(mockPtyManager.getSessionId).toHaveBeenCalled();
+    expect(getSessionId).toBeDefined();
+    if (getSessionId) {
+      expect(getSessionId()).toBe("test-session-id");
+      expect(mockPtyManager.getSessionId).toHaveBeenCalled();
+    }
   });
 
   it("should re-setup handler when terminal changes", async () => {

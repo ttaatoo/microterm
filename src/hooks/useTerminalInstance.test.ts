@@ -217,9 +217,13 @@ describe("useTerminalInstance", () => {
 
       // Mock the scroll position by replacing the buffer object
       if (terminal) {
-        terminal.buffer = {
-          active: { viewportY: 42 },
-        } as any;
+        Object.defineProperty(terminal, "buffer", {
+          value: {
+            active: { viewportY: 42 },
+          },
+          writable: true,
+          configurable: true,
+        });
       }
 
       unmount1();

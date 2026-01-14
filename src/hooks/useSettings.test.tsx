@@ -41,9 +41,9 @@ describe("useSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(loadSettings).mockReturnValue(mockSettings);
-    vi.mocked(registerGlobalShortcut).mockResolvedValue(undefined);
-    vi.mocked(registerGlobalShortcutNoToggle).mockResolvedValue(undefined);
-    vi.mocked(unregisterGlobalShortcut).mockResolvedValue(undefined);
+    vi.mocked(registerGlobalShortcut).mockResolvedValue(undefined as any);
+    vi.mocked(registerGlobalShortcutNoToggle).mockResolvedValue(undefined as any);
+    vi.mocked(unregisterGlobalShortcut).mockResolvedValue(undefined as any);
   });
 
   describe("Initialization", () => {

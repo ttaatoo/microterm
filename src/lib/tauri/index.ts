@@ -44,7 +44,7 @@ export type { ScreenInfo } from "./window";
 export { getScreenInfo, adjustWindowSize, ensureWindowVisible } from "./window";
 
 // Settings management
-export type { AppSettings, WindowSize } from "./settings";
+export type { AppSettings } from "./settings";
 export {
   getSettings,
   updateSettings,
