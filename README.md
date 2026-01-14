@@ -67,6 +67,16 @@ The built application will be in `src-tauri/target/release/bundle/`.
 
 ## Development
 
+### Quick Start
+
+```bash
+make help            # Show all available commands
+make dev             # Start development server
+make test-coverage   # Run tests with coverage
+```
+
+### Manual Commands
+
 ```bash
 # Install dependencies
 bun install
@@ -82,6 +92,8 @@ bun run test:run     # Single run
 bun run lint
 ```
 
+See [DEV_GUIDE.md](DEV_GUIDE.md) for detailed development documentation, including test coverage and troubleshooting.
+
 ## Usage
 
 1. **Open** - Click the menubar icon or press `⌘⇧T` (configurable)
@@ -94,16 +106,16 @@ bun run lint
 
 ### Keyboard Shortcuts
 
-| Shortcut  | Action                                               |
-| --------- | ---------------------------------------------------- |
-| `⌘⇧T`     | Toggle terminal window (global, configurable)        |
-| `⌘``      | Toggle pin state (global, configurable)              |
-| `⌘T`      | New tab                                              |
-| `⌘W`      | Close current tab (or unpin if last tab)             |
-| `⌘1-9`    | Switch to tab 1-9                                    |
-| `⌘[`      | Previous tab                                         |
-| `⌘]`      | Next tab                                             |
-| `ESC ESC` | Hide window (double-tap, disabled when pinned)       |
+| Shortcut  | Action                                         |
+| --------- | ---------------------------------------------- |
+| `⌘⇧T`     | Toggle terminal window (global, configurable)  |
+| `⌘``      | Toggle pin state (global, configurable)        |
+| `⌘T`      | New tab                                        |
+| `⌘W`      | Close current tab (or unpin if last tab)       |
+| `⌘1-9`    | Switch to tab 1-9                              |
+| `⌘[`      | Previous tab                                   |
+| `⌘]`      | Next tab                                       |
+| `ESC ESC` | Hide window (double-tap, disabled when pinned) |
 
 ## Use Cases
 
@@ -150,6 +162,8 @@ microterm/
 ## Contributing
 
 Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) before submitting a PR.
+
+For development setup, testing, and build commands, see [DEV_GUIDE.md](DEV_GUIDE.md).
 
 ## FAQ
 

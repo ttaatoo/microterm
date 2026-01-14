@@ -1,36 +1,99 @@
-# Repository Guidelines
+# AGENTS Playbook for microterm repository
 
-## Project Layout
-- `src/`: Vite + React frontend (TypeScript) with components, hooks, contexts, lib, and styles.
-- `src-tauri/`: Rust backend (commands, PTY manager) plus Tauri config and macOS metadata (`Info.plist`).
-- `docs/`: Screenshot assets shown in the README (`screenshot.svg` as source, `screenshot.png` as exported Retina image).
-- `tmp/`: Internal checklists (production readiness, release workflow) – update when processes change.
-- Root config highlights: `package.json`, `bun.lock`, `vite.config.ts`, `vitest.config.ts`, `tsconfig.json`, `src-tauri/tauri.conf.json`.
+This document defines how automated agents (Explore, Librarian, Frontend-UX, Document Writer, Code-Reviewer, Oracle, etc.) should operate within this repository. It codifies build/test conventions, code style expectations, and the orchestration rules that guide multi-task operations.
 
-## Local Development & Build
-- Install dependencies with `bun install`.
-- Dev mode: `bun run tauri dev` (starts Vite + Tauri shell).
-- Frontend only: `bun run dev`; production bundle: `bun run build`.
-- Desktop build: `bun run tauri build`; artifacts land under `src-tauri/target/release/bundle/`.
-- Rust-only changes: `cd src-tauri && cargo build`.
+## Core Operator Principles
+- Act as a cooperative team: use the right specialized agent for each task; parallelize where possible; avoid blocking IO.
+- Always prefer existing patterns and tooling in the codebase. When unsure, ask clarifying questions before acting.
+- Maintain codebase discipline: do not introduce risky refactors; fix minimally; run validations where available.
+- Document every non-trivial action you take using the appropriate agent outputs and validation steps.
 
-## Testing & Quality
-- Unit/tests: `bun run test` (watch) or `bun run test:run`; coverage via `bun run test:coverage`.
-- Rust backend: `cd src-tauri && cargo test`.
-- Lint TypeScript/React with `bun run lint`; format Rust using `cargo fmt`.
-- Keep snapshot assets updated: regenerate `docs/screenshot.png` from the SVG (`rsvg-convert -w 1520 -h 1240 docs/screenshot.svg -o docs/screenshot.png`).
+## Phase Model (Agent Workflow)
+- Phase 0: Intent Gate
+  - Detect the task type and relevant agents. If a skill matches, invoke it immediately (see Section: Agent Roles).
+- Phase 1: Codebase Assessment (Open-ended tasks)
+  - Do a quick assessment of the repo patterns, dependencies, and tests to determine the best approach.
+  - If architecture or multi-system concerns appear, consult Oracle early.
+- Phase 2: Implementation (multistep tasks)
+  - Break the work into atomic tasks using a Todo list. Mark tasks as in_progress before starting; complete them individually.
+  - Use parallel exploration where possible; collect results via background outputs.
+- Phase 3: Completion
+  - Validate diagnostics, tests, and build; confirm all todos completed; summarize outcomes.
 
-## Coding Standards
-- TypeScript: follow ESLint + TypeScript settings; prefer functional React components and hooks.
-- Rust: avoid `unwrap()` in production paths (see `tmp/02-PRODUCTION_CHECKLIST.md` blockers); use error propagation with `?` where practical.
-- Shared strings/settings live in `src/lib/settings.ts`; update corresponding types when adding fields.
+> Note: Your default stance is to propose, plan, and then execute only when the user explicitly asks you to implement something. Use this document as the reference for automation tasks.
 
-## Release & Distribution
-- Tags (`v*`) trigger the CI release workflow (see `.github/workflows/release.yml`).
-- Review `tmp/01-release-workflow.md` for the end-to-end tagging + notarization checklist.
-- Update bundle identifiers and signing info in `src-tauri/tauri.conf.json` before shipping production builds.
+## Agent Roles and Responsibilities
+- Explore (contextual grep): Find code structure, patterns, and patterns across the repo. Can be run in background and in parallel.
+- Librarian (reference grep): Seek external docs, library usage, and best practices. Use for unfamiliar libraries or frameworks.
+- Frontend-UX Engineer: Delegated UI/UX visual changes and components. Only visual changes — do not touch non-visual logic.
+- Document Writer: Create/read/update docs, READMEs, API docs, and architecture docs.
+- Code-Reviewer: Review code for quality, security, performance, and stability; provide feedback and suggested improvements.
+- Oracle: Provide high-signal guidance for architecture decisions or problem domains that require expert reasoning.
+- Pr-Toolkit: Assist with PR composition, changelogs, and release notes (if available).
 
-## Commit & PR Practice
-- Use Conventional Commits (`feat:`, `fix:`, `docs:`, `build:`…); keep messages in imperative mood.
-- Branch names: `feat/<topic>`, `fix/<issue>`, `chore/<task>` or similar.
-- PRs should: describe user-facing changes, note testing (`bun run test:run`, `cargo test`, etc.), mention asset updates, and attach screenshots when UI changes affect docs.
+## Task Lifecycle & Todo Management
+- For non-trivial tasks (2+ steps), ALWAYS create a detailed Todo list BEFORE starting.
+- State machine for tasks: pending -> in_progress -> completed or cancelled.
+- Only ONE task should be in_progress at a time. Complete each task before moving on to the next.
+- Before starting each task, update its in_progress status. After finishing, mark completed.
+- If scope changes, update the todo entries accordingly.
+
+## Build, Lint, Test – Local Commands (common aliases)
+- Install dependencies: bun install
+- Frontend dev: bun run dev
+- Frontend production build: bun run build
+- Full desktop dev: bun run tauri dev
+- Desktop build: bun run tauri build
+- Rust tests: (cd src-tauri) cargo test
+- TypeScript lint: bun run lint
+- TypeScript tests (Vitest): bun run test or bun run test:run
+- Full test coverage: bun run test:coverage
+
+### Running a Single Test (Vitest with Bun)
+- File-scoped test: bun test path/to/file.test.ts
+- Run a specific test by name: bun test path/to/file.test.ts -t "should do something"
+- Run tests by name pattern: bun test -t "^init" or bun test -- -t "init" --glob
+
+## Code Style Guidelines (TypeScript/React and Rust)
+- General: follow ESLint + Prettier defaults for TS, with project-specific overrides if present.
+- Imports: Group external modules first, then internal modules; consistent ordering; avoid alias collisions.
+- Formatting: Use Prettier; adhere to 2-space indentation and semicolon usage consistent with the project.
+- Types: Prefer explicit types; avoid any; use unknown if you must bypass type checks temporarily; never use as any in production paths.
+- Naming:
+  - Functions and variables: camelCase
+  - React components: PascalCase
+  - Interfaces/types: PascalCase prefixed with I or exported types named clearly
+- Error handling: Do not swallow errors. Use try/catch with contextual messages. Do not use empty catch blocks.
+- Async/Promises: Always handle rejections; use proper await error propagation.
+- Testing: Write tests for new features; strive for coverage; avoid flaky tests.
+- Security: Do not commit secrets; use envs; never hardcode credentials.
+- Accessibility: For UI changes, ensure aria labels and keyboard navigation when applicable.
+- Documentation: Every non-trivial function or module should have JSDoc-style comments.
+
+## Git & PR Hygiene (Conventional Commits)
+- Use conventional commits: feat:, fix:, docs:, style:, refactor:, perf:, test:, build:, ci:, chore:
+- Include a concise subject in imperative mood; optional body with rationale; optional breaking changes note in footer.
+- When there are multiple related changes, break into logical commits.
+- PR descriptions should explain the user-facing impact and testing performed.
+
+## Cursor Rules & Copilot Guidance
+- Cursor rules: The repository includes Cursor rules at .cursor/rules/commit-message.mdc. Follow them for commit messages when you perform commits.
+- Copilot: If you enable Copilot rules in this repo (see .github/copilot-instructions.md), adhere to those constraints as well. (File not found in this repo snapshot; create or adjust if present.)
+
+## Validation & Evidence (Post-change)
+- Diagnostics: Run lsp_diagnostics on changed files.
+- Build: Ensure build completes with exit code 0.
+- Tests: Ensure tests pass; note any pre-existing failures.
+- Documentation: Ensure docs reflect changes where applicable.
+
+## Cursor and Copilot References
+- Cursor commit rule path: .cursor/rules/commit-message.mdc
+- Copilot instructions path (if present): .github/copilot-instructions.md
+
+## Example Sections to Update
+- If you modify build/test commands in package.json, reflect in this AGENTS.md.
+- If new agents or roles are added, append to the Agent Roles section and describe triggers.
+
+## Versioning & History
+- AGENTS.md is a living document. Update with major workflow changes and arch decisions.
+
