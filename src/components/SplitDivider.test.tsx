@@ -57,7 +57,7 @@ describe("SplitDivider", () => {
 
   it("should set dragging state on mouse down", async () => {
     const onResize = vi.fn();
-    const _user = userEvent.setup();
+    const user = userEvent.setup();
     const { container } = render(
       <div style={{ width: "1000px", height: "500px" }}>
         <div style={{ width: "500px", height: "500px" }}>First</div>
@@ -246,7 +246,7 @@ describe("SplitDivider", () => {
 
   it("should reset to default ratio on double click", async () => {
     const onResize = vi.fn();
-    const _user = userEvent.setup();
+    const user = userEvent.setup();
     const { container } = render(
       <SplitDivider direction="vertical" branchId="branch-1" onResize={onResize} />
     );
@@ -259,7 +259,7 @@ describe("SplitDivider", () => {
 
   it("should set cursor style during drag (vertical)", async () => {
     const onResize = vi.fn();
-    const _user = userEvent.setup();
+    const user = userEvent.setup();
     const { container } = render(
       <SplitDivider direction="vertical" branchId="branch-1" onResize={onResize} />
     );
@@ -279,7 +279,7 @@ describe("SplitDivider", () => {
 
   it("should set cursor style during drag (horizontal)", async () => {
     const onResize = vi.fn();
-    const _user = userEvent.setup();
+    const user = userEvent.setup();
     const { container } = render(
       <SplitDivider direction="horizontal" branchId="branch-1" onResize={onResize} />
     );
@@ -343,7 +343,7 @@ describe("SplitDivider", () => {
 
   it("should handle zero container size gracefully", async () => {
     const onResize = vi.fn();
-    const _user = userEvent.setup();
+    const user = userEvent.setup();
     const { container } = render(
       <div style={{ width: "0px", height: "0px" }}>
         <SplitDivider direction="vertical" branchId="branch-1" onResize={onResize} />

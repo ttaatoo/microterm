@@ -99,7 +99,7 @@ describe("SearchBar", () => {
 
   describe("Search Input", () => {
     it("should update query on input change", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const input = screen.getByPlaceholderText("Find");
@@ -110,7 +110,7 @@ describe("SearchBar", () => {
     });
 
     it("should call onSearch when query changes", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const input = screen.getByPlaceholderText("Find");
@@ -124,7 +124,7 @@ describe("SearchBar", () => {
     });
 
     it("should call onSearch with current options", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       // Toggle case sensitive
@@ -146,7 +146,7 @@ describe("SearchBar", () => {
 
   describe("Search Options", () => {
     it("should toggle regex option", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const regexBtn = screen.getByTitle("Use Regular Expression");
@@ -166,7 +166,7 @@ describe("SearchBar", () => {
     });
 
     it("should toggle case sensitive option", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const caseSensitiveBtn = screen.getByTitle("Match Case");
@@ -183,7 +183,7 @@ describe("SearchBar", () => {
     });
 
     it("should toggle whole word option", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const wholeWordBtn = screen.getByTitle("Match Whole Word");
@@ -200,7 +200,7 @@ describe("SearchBar", () => {
     });
 
     it("should toggle option off when clicked again", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const regexBtn = screen.getByTitle("Use Regular Expression");
@@ -215,7 +215,7 @@ describe("SearchBar", () => {
     });
 
     it("should allow multiple options to be active", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const regexBtn = screen.getByTitle("Use Regular Expression");
@@ -236,7 +236,7 @@ describe("SearchBar", () => {
 
   describe("Navigation", () => {
     it("should call onSearchNext when next button clicked", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       // Add query first
@@ -250,7 +250,7 @@ describe("SearchBar", () => {
     });
 
     it("should call onSearchPrevious when previous button clicked", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       // Add query first
@@ -274,7 +274,7 @@ describe("SearchBar", () => {
     });
 
     it("should enable navigation buttons when query exists", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const input = screen.getByPlaceholderText("Find");
@@ -344,7 +344,7 @@ describe("SearchBar", () => {
 
   describe("Close Button", () => {
     it("should call onClose when close button clicked", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const closeBtn = screen.getByTitle("Close (Esc)");
@@ -384,7 +384,7 @@ describe("SearchBar", () => {
 
   describe("Edge Cases", () => {
     it("should handle rapid option toggling", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const regexBtn = screen.getByTitle("Use Regular Expression");
@@ -412,7 +412,7 @@ describe("SearchBar", () => {
     });
 
     it("should preserve query when options change", async () => {
-      const _user = userEvent.setup();
+      const user = userEvent.setup();
       render(<SearchBar {...defaultProps} />);
 
       const input = screen.getByPlaceholderText("Find");

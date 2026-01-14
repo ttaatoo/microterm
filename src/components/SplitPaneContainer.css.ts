@@ -22,7 +22,11 @@ export const paneWrapper = style({
   minHeight: 0,
 });
 
-export const paneWrapperActive = style({});
+// Explicit style to prevent CSS loading flash
+// The ::before pseudo-element provides the visual indicator
+export const paneWrapperActive = style({
+  position: "relative",
+});
 
 // Fade in animation for initial render
 const fadeIn = keyframes({
@@ -47,9 +51,11 @@ globalStyle(`${paneWrapperActive}::before`, {
   background: "#a855f7",
   borderRadius: "50%",
   zIndex: 10,
+  boxShadow: "0 0 2px rgba(168, 85, 247, 0.5)",
+  // Explicitly set initial state to prevent flash before animation loads
+  opacity: 0,
   // Wait 500ms for prompt, then fade in (300ms), then breathe infinitely
   animation: `${fadeIn} 0.3s ease-out 0.5s both, ${breathe} 2s ease-in-out 0.8s infinite`,
-  boxShadow: "0 0 2px rgba(168, 85, 247, 0.5)",
 });
 
 export const tabContainer = style({

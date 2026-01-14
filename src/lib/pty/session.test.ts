@@ -69,7 +69,7 @@ describe("PtySession", () => {
 
   describe("Construction", () => {
     it("should create session with buffering enabled by default", () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -85,7 +85,7 @@ describe("PtySession", () => {
     it("should create session without buffering when disabled", () => {
       MockDataBufferConstructor.mockClear();
 
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
         enableBuffering: false,
       });
@@ -109,7 +109,7 @@ describe("PtySession", () => {
 
     it("should accept onSessionCreated callback", () => {
       const onSessionCreated = vi.fn();
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
         onSessionCreated,
       });
@@ -121,7 +121,7 @@ describe("PtySession", () => {
   describe("create()", () => {
     it("should create PTY session successfully", async () => {
       const onSessionCreated = vi.fn();
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
         onSessionCreated,
       });
@@ -136,7 +136,7 @@ describe("PtySession", () => {
     });
 
     it("should validate dimensions before creation", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -151,7 +151,7 @@ describe("PtySession", () => {
         .mockRejectedValueOnce(new Error("Failed once"))
         .mockResolvedValueOnce("test-session-id");
 
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -171,7 +171,7 @@ describe("PtySession", () => {
     it("should show error after max retries", async () => {
       vi.mocked(createPtySession).mockRejectedValue(new Error("Failed"));
 
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -192,7 +192,7 @@ describe("PtySession", () => {
     it("should increase retry delay exponentially", async () => {
       vi.mocked(createPtySession).mockRejectedValue(new Error("Failed"));
 
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -212,7 +212,7 @@ describe("PtySession", () => {
 
   describe("reuse()", () => {
     it("should reuse existing session", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -225,7 +225,7 @@ describe("PtySession", () => {
     it("should create new session if resize fails", async () => {
       vi.mocked(resizePty).mockRejectedValueOnce(new Error("Resize failed"));
 
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -238,7 +238,7 @@ describe("PtySession", () => {
 
   describe("write()", () => {
     it("should write data to PTY", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -249,7 +249,7 @@ describe("PtySession", () => {
     });
 
     it("should not write if session is not active", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -261,7 +261,7 @@ describe("PtySession", () => {
     it("should attempt reconnection on write failure", async () => {
       vi.mocked(writeToPty).mockRejectedValueOnce(new Error("Write failed"));
 
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -278,7 +278,7 @@ describe("PtySession", () => {
 
   describe("resize()", () => {
     it("should resize PTY session", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -289,7 +289,7 @@ describe("PtySession", () => {
     });
 
     it("should validate dimensions before resize", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -301,7 +301,7 @@ describe("PtySession", () => {
     });
 
     it("should not resize if session is not active", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -314,7 +314,7 @@ describe("PtySession", () => {
       vi.mocked(resizePty).mockRejectedValueOnce(new Error("Resize failed"));
       const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -331,7 +331,7 @@ describe("PtySession", () => {
 
   describe("setupListeners()", () => {
     it("should set up PTY output listener", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -343,7 +343,7 @@ describe("PtySession", () => {
     });
 
     it("should set up PTY exit listener", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -354,7 +354,7 @@ describe("PtySession", () => {
     });
 
     it("should handle PTY output events with buffering", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -380,7 +380,7 @@ describe("PtySession", () => {
     });
 
     it("should handle PTY output events without buffering", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
         enableBuffering: false,
       });
@@ -403,7 +403,7 @@ describe("PtySession", () => {
     });
 
     it("should handle PTY exit events", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -437,7 +437,7 @@ describe("PtySession", () => {
     });
 
     it("should ignore events for different sessions", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -459,7 +459,7 @@ describe("PtySession", () => {
     });
 
     it("should return unlisten function", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -475,7 +475,7 @@ describe("PtySession", () => {
 
   describe("close()", () => {
     it("should close PTY session", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -488,7 +488,7 @@ describe("PtySession", () => {
     });
 
     it("should clean up event listeners", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -500,7 +500,7 @@ describe("PtySession", () => {
     });
 
     it("should dispose data buffer", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -515,7 +515,7 @@ describe("PtySession", () => {
       vi.mocked(closePtySession).mockRejectedValueOnce(new Error("Close failed"));
       const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -527,7 +527,7 @@ describe("PtySession", () => {
     });
 
     it("should prevent writes after close", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -556,7 +556,7 @@ describe("PtySession", () => {
 
   describe("dispose()", () => {
     it("should dispose session resources", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -569,7 +569,7 @@ describe("PtySession", () => {
     });
 
     it("should prevent restart after disposal", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -600,7 +600,7 @@ describe("PtySession", () => {
 
   describe("Edge Cases", () => {
     it("should handle rapid create/close cycles", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -614,7 +614,7 @@ describe("PtySession", () => {
     });
 
     it("should handle write before setup", async () => {
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 
@@ -627,7 +627,7 @@ describe("PtySession", () => {
     it("should handle invalid event payloads gracefully", async () => {
       const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-      const _session = new PtySession({
+      const session = new PtySession({
         terminal: mockTerminal as Terminal,
       });
 

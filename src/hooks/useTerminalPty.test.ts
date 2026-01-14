@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useTerminalPty } from "./useTerminalPty";
 
 // Mock PtyManager
@@ -226,15 +226,15 @@ describe("useTerminalPty", () => {
 
     unmount();
 
-    // Wait for async cleanup
+    // PTY session should NOT be closed on unmount - it may be reused
+    // Only event listeners are cleaned up
     await waitFor(() => {
-      expect(mockPtyManager!.close).toHaveBeenCalled();
+      expect(mockPtyManager!.close).not.toHaveBeenCalled();
     });
   });
 
-  it("should handle cleanup errors gracefully", async () => {
+  it("should handle cleanup without closing session", async () => {
     const mockTerminal = createMockTerminal();
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const { unmount, result } = renderHook(() =>
       useTerminalPty({
@@ -249,20 +249,12 @@ describe("useTerminalPty", () => {
     const mockPtyManager = result.current.ptyManager;
     expect(mockPtyManager).not.toBeNull();
 
-    // Make close reject with error
-    mockPtyManager!.close.mockRejectedValueOnce(new Error("Close failed"));
-
     unmount();
 
-    // Should log error but not throw
+    // Cleanup should not call close() - session is preserved
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[useTerminalPty] Failed to close PTY:",
-        expect.any(Error)
-      );
+      expect(mockPtyManager!.close).not.toHaveBeenCalled();
     });
-
-    consoleErrorSpy.mockRestore();
   });
 
   it("should not update state after unmount", async () => {

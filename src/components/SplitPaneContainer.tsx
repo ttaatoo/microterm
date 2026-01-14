@@ -75,6 +75,7 @@ function SplitPaneContainerInner({
         style={{ flex: firstFlex }}
       >
         <SplitPaneContainerInner
+          key={branch.first.id}
           tabId={tabId}
           node={branch.first}
           activePaneId={activePaneId}
@@ -97,6 +98,7 @@ function SplitPaneContainerInner({
         style={{ flex: secondFlex }}
       >
         <SplitPaneContainerInner
+          key={branch.second.id}
           tabId={tabId}
           node={branch.second}
           activePaneId={activePaneId}
@@ -170,6 +172,7 @@ const LeafPane = memo(function LeafPane({
       style={{ width: "100%", height: "100%" }}
     >
       <XTerminal
+        key={pane.id}
         ref={handleRef}
         tabId={tabId}
         paneId={pane.id}

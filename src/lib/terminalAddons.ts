@@ -1,5 +1,11 @@
 /**
  * Terminal addon setup utilities
+ *
+ * Best practices from xterm.js documentation:
+ * - Load addons after terminal.open() is called
+ * - WebGL renderer improves performance for large buffers (1000+ lines)
+ * - Canvas renderer (default) is sufficient for typical terminal use
+ * - Browser WebGL context limits: Chrome/Firefox ~16, Safari ~8
  */
 
 import { openUrl } from "@/lib/tauri";
@@ -16,12 +22,30 @@ export interface TerminalAddons {
   webglAddon?: WebglAddon;
 }
 
+export interface SetupTerminalAddonsOptions {
+  /**
+   * Enable WebGL renderer for improved performance with large buffers.
+   * Disabled by default to avoid WebGL context limits with split panes.
+   * Canvas renderer (default) is sufficient for most terminal use cases.
+   */
+  enableWebGL?: boolean;
+}
+
 /**
  * Creates and loads all terminal addons
- * @param terminal - xterm.js Terminal instance
+ * IMPORTANT: Call this after terminal.open() is executed
+ *
+ * @param terminal - xterm.js Terminal instance (must be opened)
+ * @param options - Configuration options
  * @returns Object containing addon instances
  */
-export function setupTerminalAddons(terminal: Terminal): TerminalAddons {
+export function setupTerminalAddons(
+  terminal: Terminal,
+  options: SetupTerminalAddonsOptions = {}
+): TerminalAddons {
+  const { enableWebGL = false } = options;
+
+  // Core addons - always loaded
   const fitAddon = new FitAddon();
   const searchAddon = new SearchAddon();
   const webLinksAddon = new WebLinksAddon((event: MouseEvent, uri: string) => {
@@ -38,20 +62,47 @@ export function setupTerminalAddons(terminal: Terminal): TerminalAddons {
   terminal.loadAddon(webLinksAddon);
   terminal.loadAddon(searchAddon);
 
-  // WebGL renderer for better performance and transparency handling
+  // WebGL renderer (optional, for performance with large buffers)
   let webglAddon: WebglAddon | undefined = undefined;
-  try {
-    webglAddon = new WebglAddon({ preserveDrawingBuffer: true });
-    webglAddon.onContextLoss(() => {
-      console.warn("[Terminal] WebGL context lost, falling back to canvas renderer");
-      webglAddon?.dispose();
-    });
-    terminal.loadAddon(webglAddon);
-    console.log("[Terminal] WebGL renderer enabled");
-  } catch (error) {
-    console.warn("[Terminal] WebGL not available, using canvas renderer:", error);
-    webglAddon = undefined;
+  if (enableWebGL) {
+    webglAddon = loadWebGLRenderer(terminal);
   }
 
   return { fitAddon, searchAddon, webLinksAddon, webglAddon };
+}
+
+/**
+ * Loads WebGL renderer with proper error handling and restoration
+ * Based on xterm.js official documentation examples
+ */
+function loadWebGLRenderer(terminal: Terminal): WebglAddon | undefined {
+  try {
+    // Note: No constructor options needed per official xterm.js examples
+    const webglAddon = new WebglAddon();
+
+    // Handle context loss (GPU crashes, driver updates, OOM, suspend/resume)
+    webglAddon.onContextLoss(() => {
+      console.warn("[Terminal] WebGL context lost, disposing addon");
+      webglAddon.dispose();
+
+      // Attempt restoration after delay (optional pattern from xterm.js docs)
+      setTimeout(() => {
+        try {
+          const newWebglAddon = new WebglAddon();
+          terminal.loadAddon(newWebglAddon);
+          console.log("[Terminal] WebGL renderer restored");
+        } catch (error) {
+          console.error("[Terminal] Failed to restore WebGL:", error);
+        }
+      }, 2000);
+    });
+
+    terminal.loadAddon(webglAddon);
+    console.log("[Terminal] WebGL renderer enabled");
+    return webglAddon;
+
+  } catch (error) {
+    console.warn("[Terminal] WebGL not available, using canvas renderer:", error);
+    return undefined;
+  }
 }

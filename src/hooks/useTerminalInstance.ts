@@ -6,6 +6,7 @@ import { loadSettings } from "@/lib/settings";
 
 export interface UseTerminalInstanceOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
+  paneId?: string;
   opacity?: number;
   fontSize?: number;
   onData?: (data: string) => void;
@@ -18,12 +19,52 @@ export interface TerminalInstance {
   webglAddon: ReturnType<typeof setupTerminalAddons>["webglAddon"];
 }
 
+// Global cache for terminal instances by paneId
+const terminalCache = new Map<string, TerminalInstance>();
+
+/**
+ * Cache monitoring configuration
+ * Typical usage: max panes = tabs * splits (e.g., 10 tabs * 4 splits = 40 panes)
+ */
+const CACHE_SIZE_WARNING_THRESHOLD = 50;
+const CACHE_SIZE_ERROR_THRESHOLD = 100;
+
+/**
+ * Log cache statistics for debugging and monitoring
+ */
+function logCacheStats(operation: "add" | "reuse" | "dispose", paneId: string): void {
+  const size = terminalCache.size;
+  const prefix = `[TerminalCache] ${operation}`;
+
+  if (size >= CACHE_SIZE_ERROR_THRESHOLD) {
+    console.error(`${prefix} paneId=${paneId} | CRITICAL: cache size=${size} (threshold=${CACHE_SIZE_ERROR_THRESHOLD})`);
+  } else if (size >= CACHE_SIZE_WARNING_THRESHOLD) {
+    console.warn(`${prefix} paneId=${paneId} | WARNING: cache size=${size} (threshold=${CACHE_SIZE_WARNING_THRESHOLD})`);
+  } else {
+    console.debug(`${prefix} paneId=${paneId} | cache size=${size}`);
+  }
+}
+
+/**
+ * Get current cache statistics for debugging
+ */
+export function getTerminalCacheStats(): { size: number; paneIds: string[] } {
+  return {
+    size: terminalCache.size,
+    paneIds: Array.from(terminalCache.keys()),
+  };
+}
+
 /**
  * Hook for creating and managing a Terminal instance
  * Handles terminal lifecycle, theming, and font size updates
+ *
+ * If paneId is provided, terminals are cached and reused across remounts
+ * to preserve scrollback buffer and cursor state during pane splits
  */
 export function useTerminalInstance({
   containerRef,
+  paneId,
   opacity: propOpacity,
   fontSize: propFontSize,
   onData,
@@ -40,14 +81,55 @@ export function useTerminalInstance({
     if (!containerRef.current || initializedRef.current) return;
     initializedRef.current = true;
 
+    // Check if we have a cached terminal for this pane
+    if (paneId && terminalCache.has(paneId)) {
+      const cachedInstance = terminalCache.get(paneId)!;
+      logCacheStats("reuse", paneId);
+
+      const element = cachedInstance.terminal.element;
+
+      // Reattach DOM element to new container
+      if (element && element.parentElement !== containerRef.current) {
+        containerRef.current.appendChild(element);
+      }
+
+      // Save current scroll position before any operations
+      const savedScrollY = cachedInstance.terminal.buffer.active.viewportY;
+
+      // Reinitialize WebGL if needed
+      if (cachedInstance.webglAddon) {
+        try {
+          cachedInstance.webglAddon.dispose();
+          const { webglAddon: newWebglAddon } = setupTerminalAddons(cachedInstance.terminal);
+          cachedInstance.webglAddon = newWebglAddon;
+        } catch (error) {
+          console.warn("[useTerminalInstance] WebGL reinitialization failed, using canvas", error);
+          cachedInstance.webglAddon = undefined;
+        }
+      }
+
+      // Refresh and fit
+      cachedInstance.terminal.refresh(0, cachedInstance.terminal.rows - 1);
+      cachedInstance.fitAddon.fit();
+
+      // Restore scroll position after refresh/fit
+      // Use requestAnimationFrame to ensure operations are complete
+      requestAnimationFrame(() => {
+        cachedInstance.terminal.scrollToLine(savedScrollY);
+      });
+
+      setInstance(cachedInstance);
+      return () => {
+        // Don't dispose cached terminals on unmount
+      };
+    }
+
     const settings = loadSettings();
     const initialOpacity = initialOpacityRef.current ?? settings.opacity ?? 0.95;
     const initialFontSize = initialFontSizeRef.current ?? settings.fontSize ?? 13;
 
     // Create terminal with options
     const theme = getTerminalTheme(initialOpacity);
-    console.log("[Terminal] Initializing with theme:", theme);
-    console.log("[Terminal] Opacity:", initialOpacity, "Font size:", initialFontSize);
 
     const terminal = new Terminal({
       cursorBlink: true,
@@ -78,16 +160,26 @@ export function useTerminalInstance({
       terminal.onData(onData);
     }
 
-    setInstance({ terminal, fitAddon, searchAddon, webglAddon });
+    const newInstance = { terminal, fitAddon, searchAddon, webglAddon };
+
+    // Cache the terminal if paneId is provided
+    if (paneId) {
+      terminalCache.set(paneId, newInstance);
+      logCacheStats("add", paneId);
+    }
+
+    setInstance(newInstance);
 
     return () => {
-      // Cleanup
-      webglAddon?.dispose();
-      terminal.dispose();
+      // Only dispose if not cached or being explicitly removed
+      if (!paneId) {
+        webglAddon?.dispose();
+        terminal.dispose();
+      }
       setInstance(null);
       initializedRef.current = false;
     };
-  }, [containerRef, onData]);
+  }, [containerRef, paneId, onData]);
 
   // Initialize on mount
   useEffect(() => {
@@ -114,4 +206,18 @@ export function useTerminalInstance({
   }, [instance, propFontSize]);
 
   return instance;
+}
+
+/**
+ * Dispose a cached terminal instance when pane is permanently removed
+ * This should be called from TerminalView when tracking pane removals
+ */
+export function disposeCachedTerminal(paneId: string): void {
+  const instance = terminalCache.get(paneId);
+  if (instance) {
+    instance.webglAddon?.dispose();
+    instance.terminal.dispose();
+    terminalCache.delete(paneId);
+    logCacheStats("dispose", paneId);
+  }
 }

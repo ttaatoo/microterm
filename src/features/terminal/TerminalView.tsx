@@ -27,6 +27,7 @@ function TerminalViewInner() {
   const {
     getPaneTree,
     getActivePaneId,
+    getAllPanes,
     initializeTabPanes,
     cleanupTabPanes,
     setActivePane,
@@ -67,6 +68,78 @@ function TerminalViewInner() {
     }
     prevTabIds.current = currentTabIds;
   }, [tabs, cleanupTabPanes]);
+
+  // Track pane removals and close their PTY sessions
+  const prevPaneSessionsRef = useRef<Map<string, Map<string, string | null>>>(new Map());
+  useEffect(() => {
+    const closePtySession = async (sessionId: string) => {
+      try {
+        const { getInvoke } = await import("@/lib/tauri");
+        const invoke = await getInvoke();
+        await invoke("close_pty_session", { sessionId });
+      } catch (error) {
+        console.error("[TerminalView] Failed to close PTY session:", error);
+      }
+    };
+
+    const disposeTerminalInstance = async (paneId: string) => {
+      try {
+        const { disposeCachedTerminal } = await import("@/hooks/useTerminalInstance");
+        disposeCachedTerminal(paneId);
+      } catch (error) {
+        console.error("[TerminalView] Failed to dispose terminal instance:", error);
+      }
+    };
+
+    // Build current pane sessions map
+    const currentPaneSessions = new Map<string, Map<string, string | null>>();
+    for (const tab of tabs) {
+      const paneTree = getPaneTree(tab.id);
+      if (paneTree) {
+        const panes = getAllPanes(tab.id);
+        const paneMap = new Map<string, string | null>();
+        for (const pane of panes) {
+          if (pane.sessionId) {
+            paneMap.set(pane.id, pane.sessionId);
+          }
+        }
+        currentPaneSessions.set(tab.id, paneMap);
+      }
+    }
+
+    // Check for removed panes and close their sessions
+    // Skip cleanup on first render when prevPaneSessionsRef is empty
+    if (prevPaneSessionsRef.current.size === 0) {
+      prevPaneSessionsRef.current = currentPaneSessions;
+      return;
+    }
+
+    for (const [tabId, prevPanes] of prevPaneSessionsRef.current.entries()) {
+      const currentPanes = currentPaneSessions.get(tabId);
+      if (!currentPanes) {
+        // Tab was removed, close all its pane sessions and dispose terminals
+        for (const [paneId, sessionId] of prevPanes.entries()) {
+          if (sessionId) {
+            closePtySession(sessionId);
+          }
+          disposeTerminalInstance(paneId);
+        }
+      } else {
+        // Check for removed panes within this tab
+        for (const [paneId, sessionId] of prevPanes.entries()) {
+          if (!currentPanes.has(paneId)) {
+            // Pane was removed, close its session and dispose terminal
+            if (sessionId) {
+              closePtySession(sessionId);
+            }
+            disposeTerminalInstance(paneId);
+          }
+        }
+      }
+    }
+
+    prevPaneSessionsRef.current = currentPaneSessions;
+  }, [tabs, getPaneTree, getAllPanes]);
 
   // Get the active terminal ref (for search)
   const getActiveTerminal = useCallback(() => {

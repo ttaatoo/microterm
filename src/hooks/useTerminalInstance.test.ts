@@ -14,9 +14,20 @@ vi.mock("@xterm/xterm", () => ({
     rows = 24;
     options: any = {};
     refresh = vi.fn();
+    scrollToLine = vi.fn();
+    buffer: any;
+    element: HTMLElement | undefined;
 
     constructor(_options: any) {
       this.options = _options;
+      // Create a mock DOM element
+      this.element = document.createElement("div");
+      // Initialize mutable buffer
+      this.buffer = {
+        active: {
+          viewportY: 0,
+        },
+      };
     }
   },
 }));
@@ -137,5 +148,214 @@ describe("useTerminalInstance", () => {
 
     // Verify dispose was called
     expect(terminal?.dispose).toHaveBeenCalled();
+  });
+
+  describe("Terminal Caching", () => {
+    it("should cache terminal when paneId is provided", () => {
+      const { result, unmount } = renderHook(() =>
+        useTerminalInstance({
+          containerRef,
+          paneId: "pane-1",
+        })
+      );
+
+      const cachedTerminal = result.current?.terminal;
+      expect(cachedTerminal).toBeDefined();
+
+      unmount();
+
+      // Terminal should NOT be disposed when cached
+      expect(cachedTerminal?.dispose).not.toHaveBeenCalled();
+    });
+
+    it("should reuse cached terminal on remount", () => {
+      // First mount
+      const { result: result1, unmount: unmount1 } = renderHook(() =>
+        useTerminalInstance({
+          containerRef,
+          paneId: "pane-1",
+        })
+      );
+
+      const firstTerminal = result1.current?.terminal;
+      const firstElement = firstTerminal?.element;
+      expect(firstTerminal).toBeDefined();
+
+      unmount1();
+
+      // Create new container for remount
+      const div2 = document.createElement("div");
+      document.body.appendChild(div2);
+      const containerRef2 = { current: div2 };
+
+      // Second mount with same paneId
+      const { result: result2 } = renderHook(() =>
+        useTerminalInstance({
+          containerRef: containerRef2,
+          paneId: "pane-1",
+        })
+      );
+
+      const secondTerminal = result2.current?.terminal;
+
+      // Should be the same terminal instance
+      expect(secondTerminal).toBe(firstTerminal);
+      expect(secondTerminal?.element).toBe(firstElement);
+    });
+
+    it("should preserve scroll position on cache hit", () => {
+      // First mount
+      const { result: result1, unmount: unmount1 } = renderHook(() =>
+        useTerminalInstance({
+          containerRef,
+          paneId: "pane-2",
+        })
+      );
+
+      const terminal = result1.current?.terminal;
+      expect(terminal).toBeDefined();
+
+      // Mock the scroll position by replacing the buffer object
+      if (terminal) {
+        terminal.buffer = {
+          active: { viewportY: 42 },
+        } as any;
+      }
+
+      unmount1();
+
+      // Create new container for remount
+      const div2 = document.createElement("div");
+      document.body.appendChild(div2);
+      const containerRef2 = { current: div2 };
+
+      // Second mount with same paneId - should restore scroll position
+      renderHook(() =>
+        useTerminalInstance({
+          containerRef: containerRef2,
+          paneId: "pane-2",
+        })
+      );
+
+      // Wait for requestAnimationFrame
+      return new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          // Should restore to saved scroll position (42)
+          expect(terminal?.scrollToLine).toHaveBeenCalledWith(42);
+          resolve();
+        });
+      });
+    });
+
+    it("should not cache terminal when paneId is not provided", () => {
+      // First mount without paneId
+      const { result: result1, unmount: unmount1 } = renderHook(() =>
+        useTerminalInstance({
+          containerRef,
+        })
+      );
+
+      const firstTerminal = result1.current?.terminal;
+      expect(firstTerminal).toBeDefined();
+
+      unmount1();
+
+      // Terminal should be disposed
+      expect(firstTerminal?.dispose).toHaveBeenCalled();
+
+      // Second mount without paneId should create new terminal
+      const div2 = document.createElement("div");
+      document.body.appendChild(div2);
+      const containerRef2 = { current: div2 };
+
+      const { result: result2 } = renderHook(() =>
+        useTerminalInstance({
+          containerRef: containerRef2,
+        })
+      );
+
+      const secondTerminal = result2.current?.terminal;
+
+      // Should be a different terminal instance
+      expect(secondTerminal).not.toBe(firstTerminal);
+    });
+
+    it("should handle different paneIds as separate caches", () => {
+      // Mount terminal for pane-1
+      const { result: result1 } = renderHook(() =>
+        useTerminalInstance({
+          containerRef,
+          paneId: "pane-1",
+        })
+      );
+
+      const terminal1 = result1.current?.terminal;
+
+      // Mount terminal for pane-2
+      const div2 = document.createElement("div");
+      document.body.appendChild(div2);
+      const containerRef2 = { current: div2 };
+
+      const { result: result2 } = renderHook(() =>
+        useTerminalInstance({
+          containerRef: containerRef2,
+          paneId: "pane-2",
+        })
+      );
+
+      const terminal2 = result2.current?.terminal;
+
+      // Should be different terminal instances
+      expect(terminal1).not.toBe(terminal2);
+      expect(terminal1).toBeDefined();
+      expect(terminal2).toBeDefined();
+    });
+  });
+
+  describe("disposeCachedTerminal", () => {
+    it("should dispose and remove cached terminal", async () => {
+      const { disposeCachedTerminal } = await import("./useTerminalInstance");
+
+      // Create cached terminal
+      const { result } = renderHook(() =>
+        useTerminalInstance({
+          containerRef,
+          paneId: "pane-dispose",
+        })
+      );
+
+      const terminal = result.current?.terminal;
+      expect(terminal).toBeDefined();
+
+      // Dispose cached terminal
+      disposeCachedTerminal("pane-dispose");
+
+      // Verify dispose was called
+      expect(terminal?.dispose).toHaveBeenCalled();
+
+      // Remount should create new terminal (cache was cleared)
+      const div2 = document.createElement("div");
+      document.body.appendChild(div2);
+      const containerRef2 = { current: div2 };
+
+      const { result: result2 } = renderHook(() =>
+        useTerminalInstance({
+          containerRef: containerRef2,
+          paneId: "pane-dispose",
+        })
+      );
+
+      const newTerminal = result2.current?.terminal;
+
+      // Should be a different terminal instance
+      expect(newTerminal).not.toBe(terminal);
+    });
+
+    it("should handle disposing non-existent cache gracefully", async () => {
+      const { disposeCachedTerminal } = await import("./useTerminalInstance");
+
+      // Should not throw when disposing non-existent cache
+      expect(() => disposeCachedTerminal("non-existent-pane")).not.toThrow();
+    });
   });
 });

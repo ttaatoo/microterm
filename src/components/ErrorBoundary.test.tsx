@@ -149,7 +149,7 @@ describe("ErrorBoundary", () => {
 
   it("should handle multiple errors", async () => {
     const user = userEvent.setup();
-    const { rerender: _rerender } = render(
+    const { rerender } = render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
       </ErrorBoundary>

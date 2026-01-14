@@ -24,7 +24,35 @@ export function useTerminalPty({
   const existingSessionIdRef = useRef(existingSessionId);
   const onSessionCreatedRef = useRef(onSessionCreated);
 
-  // Keep callback ref up to date
+  /**
+   * Mount counter to force PTY initialization on every component mount.
+   *
+   * Critical for cached terminal reuse: When a terminal is cached (useTerminalInstance
+   * with paneId), the same Terminal instance may be reused across component unmount/remount
+   * cycles (e.g., during pane splits). Without this counter, React would see the same
+   * terminal reference and skip re-running the PTY initialization effect, leaving the
+   * component without a working PTY connection.
+   *
+   * By including mountKey in the effect dependencies, we ensure PTY setup runs on:
+   * 1. Initial mount (mountKey = 1)
+   * 2. Terminal change (new terminal instance)
+   * 3. Component remount with cached terminal (mountKey increments, same terminal)
+   *
+   * This allows seamless PTY reconnection when panes are split/reorganized while
+   * preserving terminal scrollback and cursor state.
+   */
+  const [mountKey, setMountKey] = useState(0);
+
+  // Increment mount key on each mount to force PTY initialization
+  useEffect(() => {
+    setMountKey((prev) => prev + 1);
+  }, []);
+
+  // Keep refs up to date
+  useEffect(() => {
+    existingSessionIdRef.current = existingSessionId;
+  }, [existingSessionId]);
+
   useEffect(() => {
     onSessionCreatedRef.current = onSessionCreated;
   }, [onSessionCreated]);
@@ -77,9 +105,8 @@ export function useTerminalPty({
       // Return cleanup function
       return () => {
         cleanupListeners();
-        manager.close().catch((error) => {
-          console.error("[useTerminalPty] Failed to close PTY:", error);
-        });
+        // Don't close the PTY session on unmount - it may be reused by a remounted component
+        // The session will be closed explicitly when the pane is removed from the tree
       };
     };
 
@@ -92,7 +119,7 @@ export function useTerminalPty({
       setPtyManager(null);
       setIsReady(false);
     };
-  }, [terminal]);
+  }, [terminal, mountKey]);
 
   return {
     sessionId,

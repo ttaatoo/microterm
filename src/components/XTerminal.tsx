@@ -47,7 +47,7 @@ const XTerminalInner = forwardRef<XTerminalHandle, XTerminalProps>(function XTer
     opacity,
     fontSize,
     tabId: _tabId,
-    paneId: _paneId,
+    paneId,
     existingSessionId,
     isVisible = true,
     isActivePane = true,
@@ -63,6 +63,7 @@ const XTerminalInner = forwardRef<XTerminalHandle, XTerminalProps>(function XTer
   // Terminal instance management
   const terminalInstance = useTerminalInstance({
     containerRef,
+    paneId,
     opacity,
     fontSize,
   });
@@ -118,6 +119,50 @@ const XTerminalInner = forwardRef<XTerminalHandle, XTerminalProps>(function XTer
     isVisible,
     onTitleChange,
   });
+
+  // Focus terminal when pane becomes active
+  useEffect(() => {
+    if (isActivePane && terminalInstance?.terminal && isVisible) {
+      let cancelled = false;
+      let timeoutId: number | undefined;
+
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+
+        const terminal = terminalInstance.terminal;
+        if (!terminal) return;
+
+        // Save scroll position before operations
+        const savedScrollY = terminal.buffer.active.viewportY;
+
+        // Force blur then focus to reset focus state properly
+        // This ensures applications receive proper focus events
+        terminal.blur();
+
+        // Small delay to ensure blur is processed
+        timeoutId = window.setTimeout(() => {
+          if (cancelled) return;
+
+          terminal.focus();
+
+          // Trigger a refresh to wake up applications (like Claude CLI)
+          // that may have hidden their cursor on blur
+          terminal.refresh(0, terminal.rows - 1);
+
+          // Restore scroll position after refresh
+          terminal.scrollToLine(savedScrollY);
+        }, 10);
+      });
+
+      return () => {
+        cancelled = true;
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
+        }
+      };
+    }
+  }, [isActivePane, terminalInstance, isVisible]);
 
   // Expose imperative handle
   useImperativeHandle(
