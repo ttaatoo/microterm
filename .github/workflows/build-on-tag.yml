@@ -42,20 +42,37 @@ jobs:
 
       - name: Upload assets to GitHub Release
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="v${VERSION}"
 
-          # Wait for release to be created (may take a few seconds after tag push)
-          for i in {1..10}; do
-            if gh release view "$TAG" &>/dev/null; then
-              echo "Release $TAG found"
-              break
+          get_changelog() {
+            if [ -f "CHANGELOG.md" ]; then
+              awk "/^## \[${VERSION}\]/,/^## \[/{if (!/^## \[${VERSION}\]/ && !/^## \[/) print}" CHANGELOG.md | sed '/^$/d' || true
             fi
-            echo "Waiting for release $TAG... (attempt $i/10)"
-            sleep 3
-          done
+          }
+
+          # If release doesn't exist, create it
+          if gh release view "$TAG" &>/dev/null; then
+            echo "Release $TAG found"
+          else
+            echo "Release $TAG not found, creating it..."
+
+            # Try to get changelog from CHANGELOG.md if it exists
+            CHANGELOG="$(get_changelog)"
+            if [ -n "$CHANGELOG" ]; then
+              gh release create "$TAG" \
+                --title "µTerm ${TAG}" \
+                --notes "$CHANGELOG"
+            else
+              gh release create "$TAG" \
+                --title "µTerm ${TAG}" \
+                --generate-notes
+            fi
+            echo "Created release $TAG"
+          fi
 
           # Upload original DMG
           ORIGINAL_DMG="src-tauri/target/release/bundle/dmg/µTerm_${VERSION}_aarch64.dmg"

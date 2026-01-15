@@ -18,6 +18,10 @@ jobs:
       tag_name: ${{ steps.release.outputs.tag_name }}
       version: ${{ steps.release.outputs.version }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整 git 历史，Release Please 需要分析提交
+
       - uses: googleapis/release-please-action@v4
         id: release
         with:
@@ -30,10 +34,25 @@ jobs:
     if: ${{ always() }}
     needs: release-please
     steps:
+      - uses: actions/checkout@v4
+
       - name: Fix stuck release PR labels
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          get_changelog() {
+            if [ -f "CHANGELOG.md" ]; then
+              awk "/^## \[${VERSION}\]/,/^## \[/{if (!/^## \[${VERSION}\]/ && !/^## \[/) print}" CHANGELOG.md | sed '/^$/d' || true
+            fi
+          }
+
+          # Ensure "autorelease: tagged" label exists once
+          gh label create "autorelease: tagged" \
+            --repo ${{ github.repository }} \
+            --description "Release PR that has been tagged" \
+            --color "0e8a16" 2>/dev/null || true
+
           # Find merged release PRs with "autorelease: pending" label
           STUCK_PRS=$(gh pr list \
             --repo ${{ github.repository }} \
@@ -54,13 +73,28 @@ jobs:
 
               # Check if tag exists
               if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
-                echo "Tag $TAG exists, updating label for PR #$PR_NUM"
+                echo "Tag $TAG exists, checking Release status..."
 
-                # Ensure "autorelease: tagged" label exists
-                gh label create "autorelease: tagged" \
-                  --repo ${{ github.repository }} \
-                  --description "Release PR that has been tagged" \
-                  --color "0e8a16" 2>/dev/null || true
+                # Check if Release exists
+                if ! gh release view "$TAG" &>/dev/null; then
+                  echo "Release $TAG not found, creating it..."
+
+                  # Try to get changelog from CHANGELOG.md if it exists
+                  CHANGELOG="$(get_changelog)"
+                  if [ -n "$CHANGELOG" ]; then
+                    gh release create "$TAG" \
+                      --title "µTerm ${TAG}" \
+                      --notes "$CHANGELOG"
+                    echo "Created Release $TAG with changelog"
+                  else
+                    gh release create "$TAG" \
+                      --title "µTerm ${TAG}" \
+                      --generate-notes
+                    echo "Created Release $TAG with auto-generated notes"
+                  fi
+                else
+                  echo "Release $TAG already exists"
+                fi
 
                 # Update labels
                 gh pr edit $PR_NUM \
@@ -68,7 +102,11 @@ jobs:
                   --remove-label "autorelease: pending" \
                   --add-label "autorelease: tagged"
 
-                echo "Fixed PR #$PR_NUM"
+                echo "Fixed PR #$PR_NUM (tag and release verified/created)"
+              else
+                echo "Tag $TAG does not exist yet for PR #$PR_NUM, skipping"
               fi
+            else
+              echo "Could not extract version from PR #$PR_NUM title: $PR_TITLE"
             fi
           done
