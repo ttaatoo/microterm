@@ -20,7 +20,11 @@ crate-type = ["cdylib", "rlib"]
 tauri-build = { version = "2.0", features = [] }
 
 [dependencies]
-tauri = { version = "2.0", features = ["tray-icon", "macos-private-api"] }
+tauri = { version = "2.0", features = [
+  "tray-icon",
+  "macos-private-api",
+  "devtools",
+] }
 tauri-plugin-shell = "2.0"
 tauri-plugin-global-shortcut = "2.0"
 tauri-plugin-autostart = "2.0"
@@ -35,8 +39,16 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", features = ["NSGeometry", "objc2-core-foundation"] }
-objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSEvent", "NSRunningApplication", "block2"] }
+objc2-foundation = { version = "0.3", features = [
+  "NSGeometry",
+  "objc2-core-foundation",
+] }
+objc2-app-kit = { version = "0.3", features = [
+  "NSWindow",
+  "NSEvent",
+  "NSRunningApplication",
+  "block2",
+] }
 block2 = "0.6"
 
 [dev-dependencies]
