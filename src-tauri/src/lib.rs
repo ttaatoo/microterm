@@ -910,7 +910,7 @@ fn save_window_config(window: &WebviewWindow) -> Result<(), String> {
             config_manager.set_config(screen_id, config);
         }
 
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(not(target_os = "macos"))]

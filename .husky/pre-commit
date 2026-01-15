@@ -11,3 +11,6 @@ bun run test:run
 
 # Rust format check
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
+
+# Rust clippy check (critical - CI also runs this)
+cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings

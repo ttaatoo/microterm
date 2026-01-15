@@ -7,12 +7,21 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   lint-frontend:
     name: Lint Frontend
+    # Skip for Release Please PRs (they only update version/changelog)
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && 
+       github.event.pull_request.user.login != 'release-please[bot]' &&
+       !startsWith(github.event.pull_request.title, 'chore: release'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +42,12 @@ jobs:
 
   test-frontend:
     name: Test Frontend
+    # Skip for Release Please PRs (they only update version/changelog)
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && 
+       github.event.pull_request.user.login != 'release-please[bot]' &&
+       !startsWith(github.event.pull_request.title, 'chore: release'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +70,12 @@ jobs:
 
   test-backend:
     name: Test Backend
+    # Skip for Release Please PRs (they only update version/changelog)
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && 
+       github.event.pull_request.user.login != 'release-please[bot]' &&
+       !startsWith(github.event.pull_request.title, 'chore: release'))
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,6 +93,12 @@ jobs:
 
   lint-backend:
     name: Lint Backend
+    # Skip for Release Please PRs (they only update version/changelog)
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && 
+       github.event.pull_request.user.login != 'release-please[bot]' &&
+       !startsWith(github.event.pull_request.title, 'chore: release'))
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -92,8 +119,48 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
 
+  # Lightweight check for Release Please PRs (only validates file changes)
+  check-release-please-pr:
+    name: Check Release Please PR
+    if: |
+      github.event_name == 'pull_request' &&
+      (github.event.pull_request.user.login == 'release-please[bot]' ||
+       startsWith(github.event.pull_request.title, 'chore: release'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Validate Release Please PR changes
+        run: |
+          echo "Release Please PR detected - validating changes..."
+          # Check that only version/changelog files are changed
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          
+          # Allow: package.json, CHANGELOG.md, .release-please-manifest.json
+          # Reject: any source code changes
+          FORBIDDEN_PATTERNS="src/|src-tauri/src/|\.ts$|\.tsx$|\.rs$"
+          if echo "$CHANGED_FILES" | grep -qE "$FORBIDDEN_PATTERNS"; then
+            echo "❌ Error: Release Please PR contains source code changes"
+            echo "This should only update version numbers and changelog"
+            exit 1
+          fi
+          
+          echo "✅ Release Please PR only contains version/changelog updates"
+
   build:
     name: Build (${{ matrix.os }})
+    # Skip for Release Please PRs (they only update version/changelog)
+    # Note: When dependency jobs are skipped, this job will also be skipped
+    # Release Please PRs are validated by check-release-please-pr job instead
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && 
+       github.event.pull_request.user.login != 'release-please[bot]' &&
+       !startsWith(github.event.pull_request.title, 'chore: release'))
     needs: [lint-frontend, lint-backend, test-frontend, test-backend]
     strategy:
       fail-fast: false

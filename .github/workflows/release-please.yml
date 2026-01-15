@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch: # 允许手动触发
 
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
