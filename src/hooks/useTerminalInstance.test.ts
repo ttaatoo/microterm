@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useTerminalInstance } from "./useTerminalInstance";
 import { createRef } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useTerminalInstance } from "./useTerminalInstance";
 
 // Mock dependencies
 vi.mock("@xterm/xterm", () => ({
@@ -117,9 +117,9 @@ describe("useTerminalInstance", () => {
     vi.clearAllMocks();
 
     // Change opacity
-    rerender({ opacity: 0.80 });
+    rerender({ opacity: 0.8 });
 
-    expect(getTerminalTheme).toHaveBeenCalledWith(0.80);
+    expect(getTerminalTheme).toHaveBeenCalledWith(0.8);
   });
 
   it("should register onData handler if provided", () => {
@@ -147,19 +147,17 @@ describe("useTerminalInstance", () => {
       webglAddon: { dispose: vi.fn() } as any,
     });
 
-    const rectSpy = vi
-      .spyOn(containerRef.current!, "getBoundingClientRect")
-      .mockReturnValue({
-        width: 0,
-        height: 0,
-        top: 0,
-        left: 0,
-        bottom: 0,
-        right: 0,
-        x: 0,
-        y: 0,
-        toJSON: () => "",
-      } as DOMRect);
+    const rectSpy = vi.spyOn(containerRef.current!, "getBoundingClientRect").mockReturnValue({
+      width: 0,
+      height: 0,
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => "",
+    } as DOMRect);
 
     renderHook(() =>
       useTerminalInstance({
