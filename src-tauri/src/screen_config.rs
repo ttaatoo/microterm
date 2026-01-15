@@ -40,6 +40,11 @@ impl ScreenId {
         ))
     }
 
+    #[cfg(target_os = "macos")]
+    pub fn from_display_id(display_id: objc2_core_graphics::CGDirectDisplayID) -> Self {
+        Self(format!("display-{}", display_id))
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }

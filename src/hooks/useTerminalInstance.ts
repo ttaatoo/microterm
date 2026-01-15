@@ -152,7 +152,6 @@ export function useTerminalInstance({
 
     // Open terminal in container
     terminal.open(containerRef.current);
-    fitAddon.fit();
     terminal.focus();
 
     // Register data handler if provided

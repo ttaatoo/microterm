@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
-import { Terminal } from "@xterm/xterm";
 import { PtyManager } from "@/lib/ptyManager";
+import { checkTauriAvailable, listen } from "@/lib/tauri/preload";
 import type { setupTerminalAddons } from "@/lib/terminalAddons";
+import { Terminal } from "@xterm/xterm";
+import { useEffect, useRef, useState } from "react";
 
 export interface UseTerminalResizeOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -23,16 +24,74 @@ export function useTerminalResize({
   isVisible = true,
 }: UseTerminalResizeOptions) {
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const [windowVisible, setWindowVisible] = useState(() => !checkTauriAvailable());
+  const lastMeasuredSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+
+  // Listen for native window visibility changes (Tauri only)
+  useEffect(() => {
+    if (!checkTauriAvailable()) return;
+
+    let unlisten: (() => void) | undefined;
+    const setupListener = async () => {
+      try {
+        unlisten = await listen<boolean>("window-visibility", (event) => {
+          setWindowVisible(event.payload);
+        });
+      } catch (error) {
+        console.error("Failed to listen for window visibility:", error);
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      unlisten?.();
+    };
+  }, []);
+
+  const scheduleFit = (reason: string) => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+    }
+
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+
+      if (!windowVisible || !terminal || !fitAddon || !ptyManager || !containerRef.current) {
+        return;
+      }
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+
+      if (width <= 0 || height <= 0) {
+        scheduleFit(`${reason}:zero-size`);
+        return;
+      }
+
+      const last = lastMeasuredSizeRef.current;
+      if (!last || last.width !== width || last.height !== height) {
+        lastMeasuredSizeRef.current = { width, height };
+        scheduleFit(`${reason}:stabilizing`);
+        return;
+      }
+
+      fitAddon.fit();
+      const { cols, rows } = terminal;
+      ptyManager.resize(cols, rows);
+    });
+  };
 
   // Setup ResizeObserver
   useEffect(() => {
     if (!containerRef.current || !terminal || !fitAddon) return;
 
     const handleResize = () => {
-      if (!fitAddon || !terminal || !ptyManager) return;
-      fitAddon.fit();
-      const { cols, rows } = terminal;
-      ptyManager.resize(cols, rows);
+      if (!windowVisible || !terminal || !fitAddon || !ptyManager) return;
+      lastMeasuredSizeRef.current = null;
+      scheduleFit("resize-observer");
     };
 
     // Also listen to terminal's own resize event
@@ -51,25 +110,12 @@ export function useTerminalResize({
       resizeObserverRef.current = null;
       disposeResizeListener.dispose();
     };
-  }, [containerRef, terminal, fitAddon, ptyManager]);
+  }, [containerRef, terminal, fitAddon, ptyManager, windowVisible]);
 
   // Re-fit when becoming visible
   useEffect(() => {
-    if (!isVisible || !terminal || !fitAddon || !containerRef.current) return;
-
-    const fitTerminal = async () => {
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-
-      if (!fitAddon || !terminal || !containerRef.current) return;
-
-      fitAddon.fit();
-
-      if (ptyManager && ptyManager.getSessionId()) {
-        const { cols, rows } = terminal;
-        await ptyManager.resize(cols, rows);
-      }
-    };
-
-    fitTerminal();
-  }, [isVisible, terminal, fitAddon, ptyManager, containerRef]);
+    if (!isVisible || !windowVisible || !terminal || !fitAddon || !ptyManager) return;
+    lastMeasuredSizeRef.current = null;
+    scheduleFit("visible-change");
+  }, [isVisible, windowVisible, terminal, fitAddon, ptyManager]);
 }

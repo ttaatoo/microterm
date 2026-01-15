@@ -21,20 +21,39 @@ export async function registerGlobalShortcut(
     return async () => {};
   }
 
-  const { register, unregister } = await import("@tauri-apps/plugin-global-shortcut");
+  const { register, unregister, isRegistered } = await import("@tauri-apps/plugin-global-shortcut");
   const emit = await getEmit();
 
-  await register(shortcut, async (event) => {
-    if (event.state === "Pressed") {
-      // Emit event to Rust backend to toggle window
-      await emit("toggle-window", {});
-      onTrigger();
+  try {
+    await register(shortcut, async (event) => {
+      if (event.state === "Pressed") {
+        // Emit event to Rust backend to toggle window
+        await emit("toggle-window", {});
+        onTrigger();
+      }
+    });
+
+    // Verify registration
+    const registered = await isRegistered(shortcut);
+    if (!registered) {
+      const error = new Error(
+        `Shortcut ${shortcut} registration verification failed`
+      );
+      console.error(`[Shortcut] ${error.message}`);
+      throw error;
     }
-  });
+  } catch (error) {
+    console.error(`[Shortcut] Failed to register ${shortcut}:`, error);
+    throw error;
+  }
 
   // Return unregister function
   return async () => {
-    await unregister(shortcut);
+    try {
+      await unregister(shortcut);
+    } catch (error) {
+      console.error(`[Shortcut] Failed to unregister ${shortcut}:`, error);
+    }
   };
 }
 

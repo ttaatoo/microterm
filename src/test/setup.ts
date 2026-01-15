@@ -1,6 +1,11 @@
 import "@testing-library/jest-dom/vitest";
 import { vi, beforeEach } from "vitest";
 
+// Ensure window is defined for Tauri mocks
+if (typeof window !== "undefined" && !("__TAURI__" in window)) {
+  (window as any).__TAURI__ = {};
+}
+
 // Mock Vanilla Extract CSS modules
 // These are build-time only and don't work in test environment
 vi.mock("@vanilla-extract/css", () => ({

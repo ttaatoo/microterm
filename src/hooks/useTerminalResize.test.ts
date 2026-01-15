@@ -1,10 +1,21 @@
-import { renderHook, waitFor, act } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { useTerminalResize } from "./useTerminalResize";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock Tauri preload module - must be before imports
+const mockUnlisten = vi.fn();
+const mockCheckTauriAvailable = vi.fn(() => false); // Return false so windowVisible is true
+const mockListen = vi.fn(() => Promise.resolve(mockUnlisten));
+
+vi.mock("@/lib/tauri/preload", () => ({
+  checkTauriAvailable: () => mockCheckTauriAvailable(),
+  listen: () => mockListen(),
+}));
+
 import { PtyManager } from "@/lib/ptyManager";
+import type { setupTerminalAddons } from "@/lib/terminalAddons";
 import type { Terminal } from "@xterm/xterm";
 import { createRef } from "react";
-import type { setupTerminalAddons } from "@/lib/terminalAddons";
+import { useTerminalResize } from "./useTerminalResize";
 
 // Mock ResizeObserver
 class MockResizeObserver {
@@ -24,6 +35,8 @@ describe("useTerminalResize", () => {
   let mockDisposeResizeListener: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
+
     mockDisposeResizeListener = vi.fn();
     mockOnResize = vi.fn();
     mockTerminal = {
@@ -47,15 +60,43 @@ describe("useTerminalResize", () => {
       resize: vi.fn().mockResolvedValue(undefined),
     } as unknown as PtyManager;
 
+    // Create container element with proper dimensions
     containerRef = createRef<HTMLDivElement>();
     const div = document.createElement("div");
+    document.body.appendChild(div);
+
+    // Set dimensions so getBoundingClientRect returns valid values
+    Object.defineProperty(div, "getBoundingClientRect", {
+      value: () => ({
+        width: 800,
+        height: 600,
+        top: 0,
+        left: 0,
+        bottom: 600,
+        right: 800,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      }),
+      writable: true,
+      configurable: true,
+    });
     containerRef.current = div;
 
-    vi.clearAllMocks();
+    // Mock requestAnimationFrame to execute synchronously
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+      cb(0);
+      return 0;
+    });
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
+    // Clean up DOM
+    if (containerRef.current && containerRef.current.parentNode) {
+      containerRef.current.parentNode.removeChild(containerRef.current);
+    }
   });
 
   it("should not setup ResizeObserver when containerRef is null", () => {
@@ -205,14 +246,18 @@ describe("useTerminalResize", () => {
     });
 
     if (resizeCallback) {
+      // Clear any previous calls
+      vi.mocked(mockFitAddon.fit).mockClear();
+
       act(() => {
         resizeCallback!([], {} as ResizeObserver);
       });
 
-      await waitFor(() => {
-        expect(mockFitAddon.fit).toHaveBeenCalled();
-      });
+      // Wait a bit to ensure no fit call happens
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
+      // When ptyManager is null, scheduleFit returns early and fitAddon.fit() is not called
+      expect(mockFitAddon.fit).not.toHaveBeenCalled();
       // Should not throw even if ptyManager is null
       expect(mockPtyManager.resize).not.toHaveBeenCalled();
     }
@@ -239,14 +284,20 @@ describe("useTerminalResize", () => {
     rerender({ isVisible: true });
 
     // Wait for requestAnimationFrame to execute
-    await waitFor(() => {
-      expect(mockFitAddon.fit).toHaveBeenCalled();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(mockFitAddon.fit).toHaveBeenCalled();
+      },
+      { timeout: 1000 }
+    );
 
     if (mockPtyManager.getSessionId()) {
-      await waitFor(() => {
-        expect(mockPtyManager.resize).toHaveBeenCalled();
-      }, { timeout: 1000 });
+      await waitFor(
+        () => {
+          expect(mockPtyManager.resize).toHaveBeenCalled();
+        },
+        { timeout: 1000 }
+      );
     }
   });
 

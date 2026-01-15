@@ -7,7 +7,7 @@
 
 // Check if running in Tauri environment
 export function isTauri(): boolean {
-  return "__TAURI__" in window;
+  return typeof window !== "undefined" && "__TAURI__" in window;
 }
 
 // Cached module references to avoid repeated dynamic imports

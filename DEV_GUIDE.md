@@ -96,6 +96,56 @@ bun run tauri dev
 
 **If port 3000 is in use:** Kill other processes or update `devUrl` in `src-tauri/tauri.conf.json`.
 
+### Global Shortcut Issues
+
+**Problem: Global shortcut (Cmd+F4) doesn't work on MacBook built-in display but works on external monitors**
+
+This is a known limitation of macOS's `RegisterEventHotKey` API (used by Tauri's global-shortcut plugin). The system may intercept or deny keyboard events differently depending on which display is active.
+
+**Diagnostic steps:**
+
+1. **Check console logs** - Open Console.app and filter for "microterm" or check the terminal where you ran `bun run tauri dev`. Look for:
+   - `[Shortcut] Successfully registered global shortcut: CommandOrControl+F4`
+   - `[Shortcut] Global shortcut triggered: CommandOrControl+F4`
+
+2. **Verify shortcut registration:**
+   - Open Settings in µTerm
+   - Check if the shortcut is displayed correctly
+   - Try changing the shortcut temporarily and changing it back
+
+3. **Check system permissions:**
+   - System Settings → Privacy & Security → Input Monitoring
+   - Ensure µTerm is listed and enabled
+   - If not listed, add it manually
+
+4. **Check for system shortcut conflicts:**
+   - System Settings → Keyboard → Keyboard Shortcuts
+   - Look for conflicts with Cmd+F4 or F4 alone
+   - macOS may reserve F4 for Mission Control or other functions
+
+**Possible solutions:**
+
+1. **Try a different shortcut combination:**
+   - Avoid F-keys (F1-F12) as they may conflict with system functions
+   - Try `Cmd+Shift+T` or `Cmd+Option+T` instead
+   - Use a modifier key combination that's less likely to conflict
+
+2. **Grant Input Monitoring permission:**
+   - System Settings → Privacy & Security → Input Monitoring
+   - Add µTerm if not present
+   - Restart the app after granting permission
+
+3. **Check display configuration:**
+   - System Settings → Displays
+   - Try setting the external monitor as the primary display temporarily
+   - Check if the issue persists
+
+4. **Restart the app:**
+   - Sometimes the shortcut registration needs to be refreshed
+   - Quit and relaunch µTerm
+
+**Note:** This is a macOS system limitation, not a bug in µTerm. The global-shortcut plugin works at the application level and may not receive events in all display contexts. If the issue persists, consider using a different shortcut combination or using the menubar icon to toggle the window.
+
 ## Vite Configuration
 
 - **Dev**: `devUrl: http://localhost:3000` in tauri.conf.json

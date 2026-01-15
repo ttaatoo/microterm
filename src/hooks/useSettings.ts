@@ -52,7 +52,7 @@ export function useSettings(options: UseSettingsOptions = {}) {
           });
           currentShortcutRef.current = settings.globalShortcut;
         } catch (error) {
-          console.error("Failed to register global shortcut:", error);
+          console.error(`[Settings] Failed to register global shortcut ${settings.globalShortcut}:`, error);
           onShortcutError?.(settings.globalShortcut);
         }
       }
@@ -110,7 +110,7 @@ export function useSettings(options: UseSettingsOptions = {}) {
         });
         currentShortcutRef.current = newShortcut;
       } catch (error) {
-        console.error("Failed to register shortcut:", error);
+        console.error(`[Settings] Failed to register shortcut ${newShortcut}:`, error);
         onShortcutError?.(newShortcut);
       }
     }

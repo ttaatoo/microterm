@@ -41,9 +41,10 @@ vi.mock("@/lib/terminal/theme", () => ({
 
 vi.mock("@/lib/terminalAddons", () => ({
   setupTerminalAddons: vi.fn(() => ({
-    fitAddon: { fit: vi.fn() },
-    searchAddon: {},
-    webglAddon: { dispose: vi.fn() },
+    fitAddon: { fit: vi.fn() } as any,
+    searchAddon: {} as any,
+    webLinksAddon: {} as any,
+    webglAddon: { dispose: vi.fn() } as any,
   })),
 }));
 
@@ -55,6 +56,7 @@ vi.mock("@/lib/settings", () => ({
 }));
 
 import { getTerminalTheme } from "@/lib/terminal/theme";
+import { setupTerminalAddons } from "@/lib/terminalAddons";
 
 describe("useTerminalInstance", () => {
   let containerRef: ReturnType<typeof createRef<HTMLDivElement>>;
@@ -132,6 +134,41 @@ describe("useTerminalInstance", () => {
 
     // Verify onData was called during setup
     expect(result.current?.terminal.onData).toHaveBeenCalledWith(mockOnData);
+  });
+
+  it("should skip initial fit when container has zero size", () => {
+    const fitMock = vi.fn();
+    const setupMock = vi.mocked(setupTerminalAddons);
+
+    setupMock.mockReturnValueOnce({
+      fitAddon: { fit: fitMock } as any,
+      searchAddon: {} as any,
+      webLinksAddon: {} as any,
+      webglAddon: { dispose: vi.fn() } as any,
+    });
+
+    const rectSpy = vi
+      .spyOn(containerRef.current!, "getBoundingClientRect")
+      .mockReturnValue({
+        width: 0,
+        height: 0,
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => "",
+      } as DOMRect);
+
+    renderHook(() =>
+      useTerminalInstance({
+        containerRef,
+      })
+    );
+
+    expect(fitMock).not.toHaveBeenCalled();
+    rectSpy.mockRestore();
   });
 
   it("should cleanup on unmount", () => {

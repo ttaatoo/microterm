@@ -1,12 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  registerGlobalShortcut,
-  registerGlobalShortcutNoToggle,
-  unregisterGlobalShortcut,
-  unregisterAllShortcuts,
-  isShortcutRegistered,
-  registerLocalShortcut,
-} from "./shortcuts";
 
 // Mock preload module
 const mockEmit = vi.fn().mockResolvedValue(undefined);
@@ -16,6 +8,15 @@ vi.mock("./preload", () => ({
   getEmit: vi.fn(() => Promise.resolve(mockEmit)),
   isTauri: vi.fn(() => isTauriMock),
 }));
+
+import {
+  registerGlobalShortcut,
+  registerGlobalShortcutNoToggle,
+  unregisterGlobalShortcut,
+  unregisterAllShortcuts,
+  isShortcutRegistered,
+  registerLocalShortcut,
+} from "./shortcuts";
 
 // Mock global shortcut plugin
 const mockRegister = vi.fn();
@@ -49,6 +50,7 @@ describe("shortcuts.ts", () => {
         registeredCallback = callback as (event: { state: string }) => Promise<void>;
         return Promise.resolve();
       });
+      mockIsRegistered.mockResolvedValue(true);
 
       const unregister = await registerGlobalShortcut("CommandOrControl+F4", onTrigger);
 
@@ -75,6 +77,7 @@ describe("shortcuts.ts", () => {
         registeredCallback = callback as (event: { state: string }) => Promise<void>;
         return Promise.resolve();
       });
+      mockIsRegistered.mockResolvedValue(true);
 
       await registerGlobalShortcut("CommandOrControl+T", onTrigger);
 
