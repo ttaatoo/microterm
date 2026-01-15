@@ -1,6 +1,6 @@
 [package]
 name = "microterm"
-version = "1.4.0"
+version = "1.4.1"
 description = "A macOS menubar terminal application"
 authors = ["µTerm Contributors"]
 license = "MIT"
