@@ -8,7 +8,7 @@ import { getEmit, isTauri } from "./preload";
 
 /**
  * Register a global shortcut with window toggle
- * @param shortcut - Shortcut string (e.g., "CommandOrControl+Shift+T")
+ * @param shortcut - Shortcut string (e.g., "CommandOrControl+F4")
  * @param onTrigger - Callback when shortcut is triggered
  * @returns Unregister function
  */

@@ -6,8 +6,8 @@ import { useSettings } from "./useSettings";
 vi.mock("@/lib/settings", () => ({
   loadSettings: vi.fn(),
   saveSettings: vi.fn(),
-  DEFAULT_SHORTCUT: "CommandOrControl+Shift+Space",
-  DEFAULT_PIN_SHORTCUT: "CommandOrControl+Shift+P",
+  DEFAULT_SHORTCUT: "CommandOrControl+F4",
+  DEFAULT_PIN_SHORTCUT: "CommandOrControl+Backquote",
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -208,7 +208,7 @@ describe("useSettings", () => {
 
       const newSettings = {
         ...mockSettings,
-        globalShortcut: "CommandOrControl+Shift+T",
+        globalShortcut: "CommandOrControl+F4",
       };
 
       await act(async () => {
@@ -217,7 +217,7 @@ describe("useSettings", () => {
 
       expect(unregisterGlobalShortcut).toHaveBeenCalledWith("CommandOrControl+Shift+Space");
       expect(registerGlobalShortcut).toHaveBeenCalledWith(
-        "CommandOrControl+Shift+T",
+        "CommandOrControl+F4",
         expect.any(Function)
       );
     });
@@ -313,14 +313,14 @@ describe("useSettings", () => {
 
       const newSettings = {
         ...mockSettings,
-        globalShortcut: "CommandOrControl+Shift+T",
+        globalShortcut: "CommandOrControl+F4",
       };
 
       await act(async () => {
         await result.current.handleSettingsChange(newSettings);
       });
 
-      expect(onShortcutError).toHaveBeenCalledWith("CommandOrControl+Shift+T");
+      expect(onShortcutError).toHaveBeenCalledWith("CommandOrControl+F4");
     });
   });
 

@@ -43,7 +43,7 @@ describe("migrateSettingsIfNeeded", () => {
     (getSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
       opacity: 0.9,
       fontSize: 14,
-      globalShortcut: "CommandOrControl+Shift+T",
+      globalShortcut: "CommandOrControl+F4",
       shortcutEnabled: true,
       pinShortcut: "CommandOrControl+Backquote",
       onboardingComplete: true,
@@ -66,7 +66,7 @@ describe("migrateSettingsIfNeeded", () => {
     (loadSettings as ReturnType<typeof vi.fn>).mockReturnValue({
       opacity: 0.85,
       fontSize: 13,
-      globalShortcut: "CommandOrControl+Shift+T",
+      globalShortcut: "CommandOrControl+F4",
       shortcutEnabled: true,
       pinShortcut: "CommandOrControl+Backquote",
       onboardingComplete: false,
@@ -82,7 +82,7 @@ describe("migrateSettingsIfNeeded", () => {
     expect(updateSettings).toHaveBeenCalledWith({
       opacity: 0.85,
       fontSize: 13,
-      globalShortcut: "CommandOrControl+Shift+T",
+      globalShortcut: "CommandOrControl+F4",
       shortcutEnabled: true,
       pinShortcut: "CommandOrControl+Backquote",
       onboardingComplete: false,
@@ -108,7 +108,7 @@ describe("migrateSettingsIfNeeded", () => {
     expect(updateSettings).toHaveBeenCalledWith({
       opacity: 0.9,
       fontSize: 13, // Default
-      globalShortcut: "CommandOrControl+Shift+T", // Default
+      globalShortcut: "CommandOrControl+F4", // Default
       shortcutEnabled: true, // Default (not false)
       pinShortcut: "CommandOrControl+Backquote", // Default
       onboardingComplete: false, // Default

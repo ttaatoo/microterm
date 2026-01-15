@@ -102,7 +102,10 @@ describe("useTerminalFocus", () => {
   it("should not focus terminal when Tauri window loses focus", async () => {
     vi.useFakeTimers();
 
-    const { unmount } = renderHook(() => useTerminalFocus({ terminal: mockTerminal }));
+    // Use isVisible: false to prevent the initial focus from the visibility effect
+    const { unmount } = renderHook(() =>
+      useTerminalFocus({ terminal: mockTerminal, isVisible: false })
+    );
 
     // Run all pending timers to allow async setup to complete
     await vi.runAllTimersAsync();
@@ -111,45 +114,8 @@ describe("useTerminalFocus", () => {
 
     const callback = (window as any).__tauriFocusCallback;
     if (callback) {
-      // Clear any previous calls - this is critical to ensure we're only testing
-      // the Tauri callback behavior, not any previous test's side effects
+      // Clear any previous calls from setup
       mockFocus.mockClear();
-
-      // In CI environments, window focus events from other tests or environment setup
-      // might interfere. The hook registers a window focus listener in the first useEffect.
-      //
-      // To ensure test isolation, we'll temporarily replace window.addEventListener
-      // to prevent new focus listeners from being registered, and we'll also prevent
-      // focus events from being dispatched during the test.
-      const originalAddEventListener = window.addEventListener;
-      const originalRemoveEventListener = window.removeEventListener;
-      const registeredFocusHandlers: Array<EventListener> = [];
-
-      // Intercept addEventListener to track focus handlers
-      window.addEventListener = vi.fn((type: string, handler: EventListener, options?: any) => {
-        if (type === "focus") {
-          registeredFocusHandlers.push(handler);
-        }
-        return originalAddEventListener.call(window, type, handler, options);
-      }) as typeof window.addEventListener;
-
-      // Intercept removeEventListener to track when handlers are removed
-      window.removeEventListener = vi.fn((type: string, handler: EventListener, options?: any) => {
-        if (type === "focus") {
-          const index = registeredFocusHandlers.indexOf(handler);
-          if (index > -1) {
-            registeredFocusHandlers.splice(index, 1);
-          }
-        }
-        return originalRemoveEventListener.call(window, type, handler, options);
-      }) as typeof window.removeEventListener;
-
-      // Remove all currently registered focus handlers to prevent interference
-      // This ensures we're only testing the Tauri callback behavior
-      registeredFocusHandlers.forEach((handler) => {
-        originalRemoveEventListener.call(window, "focus", handler);
-      });
-      registeredFocusHandlers.length = 0;
 
       // Call Tauri callback with false (window loses focus)
       // This should NOT trigger terminal focus
@@ -157,10 +123,6 @@ describe("useTerminalFocus", () => {
 
       // Advance timers to allow any setTimeout to complete
       await vi.advanceTimersByTimeAsync(200);
-
-      // Restore original methods
-      window.addEventListener = originalAddEventListener;
-      window.removeEventListener = originalRemoveEventListener;
 
       // Verify focus was not called - the Tauri callback with payload: false should not focus
       expect(mockFocus).not.toHaveBeenCalled();

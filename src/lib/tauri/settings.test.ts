@@ -22,7 +22,7 @@ describe("settings.ts", () => {
   const mockSettings: AppSettings = {
     opacity: 0.95,
     fontSize: 14,
-    globalShortcut: "CommandOrControl+Shift+T",
+    globalShortcut: "CommandOrControl+F4",
     shortcutEnabled: true,
     pinShortcut: "CommandOrControl+Shift+P",
     onboardingComplete: true,

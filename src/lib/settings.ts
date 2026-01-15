@@ -20,8 +20,8 @@ const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 24;
 
 // Global shortcut settings
-// Default: Cmd+Shift+T on macOS, Ctrl+Shift+T on other platforms
-const DEFAULT_SHORTCUT = "CommandOrControl+Shift+T";
+// Default: Cmd+F4 on macOS, Ctrl+F4 on other platforms
+const DEFAULT_SHORTCUT = "CommandOrControl+F4";
 // Pin shortcut: Cmd+` on macOS, Ctrl+` on other platforms
 const DEFAULT_PIN_SHORTCUT = "CommandOrControl+Backquote";
 

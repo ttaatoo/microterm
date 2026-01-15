@@ -96,7 +96,7 @@ See [DEV_GUIDE.md](DEV_GUIDE.md) for detailed development documentation, includi
 
 ## Usage
 
-1. **Open** - Click the menubar icon or press `⌘⇧T` (configurable)
+1. **Open** - Click the menubar icon or press `⌘F4` (configurable)
 2. **Type** - Enter commands and press Enter to execute
 3. **Navigate** - Use Up/Down arrows to browse command history
 4. **Pin Window** - Click the pin button (📌) in the tab bar or press `⌘`` (configurable) to pin/unpin the window. When pinned, the window stays visible even when clicking outside or losing focus
@@ -108,7 +108,7 @@ See [DEV_GUIDE.md](DEV_GUIDE.md) for detailed development documentation, includi
 
 | Shortcut  | Action                                         |
 | --------- | ---------------------------------------------- |
-| `⌘⇧T`     | Toggle terminal window (global, configurable)  |
+| `⌘F4`     | Toggle terminal window (global, configurable)  |
 | `⌘``      | Toggle pin state (global, configurable)        |
 | `⌘T`      | New tab                                        |
 | `⌘W`      | Close current tab (or unpin if last tab)       |

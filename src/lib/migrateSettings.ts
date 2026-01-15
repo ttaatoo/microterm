@@ -55,7 +55,7 @@ export async function migrateSettingsIfNeeded(): Promise<void> {
     const migratedSettings: AppSettings = {
       opacity: localSettings.opacity,
       fontSize: localSettings.fontSize ?? 13,
-      globalShortcut: localSettings.globalShortcut ?? "CommandOrControl+Shift+T",
+      globalShortcut: localSettings.globalShortcut ?? "CommandOrControl+F4",
       shortcutEnabled: localSettings.shortcutEnabled !== false,
       pinShortcut: localSettings.pinShortcut ?? "CommandOrControl+Backquote",
       onboardingComplete: localSettings.onboardingComplete ?? false,

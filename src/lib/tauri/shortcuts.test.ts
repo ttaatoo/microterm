@@ -50,9 +50,9 @@ describe("shortcuts.ts", () => {
         return Promise.resolve();
       });
 
-      const unregister = await registerGlobalShortcut("CommandOrControl+Shift+T", onTrigger);
+      const unregister = await registerGlobalShortcut("CommandOrControl+F4", onTrigger);
 
-      expect(mockRegister).toHaveBeenCalledWith("CommandOrControl+Shift+T", expect.any(Function));
+      expect(mockRegister).toHaveBeenCalledWith("CommandOrControl+F4", expect.any(Function));
 
       // Simulate shortcut trigger
       if (registeredCallback) {
@@ -64,7 +64,7 @@ describe("shortcuts.ts", () => {
 
       // Test unregister
       await unregister();
-      expect(mockUnregister).toHaveBeenCalledWith("CommandOrControl+Shift+T");
+      expect(mockUnregister).toHaveBeenCalledWith("CommandOrControl+F4");
     });
 
     it("should not trigger on Released state", async () => {
