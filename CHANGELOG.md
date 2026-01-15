@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1](https://github.com/ttaatoo/microterm/compare/v1.4.0...v1.4.1) (2026-01-15)
+
+
+### Bug Fixes
+
+* **ci:** move pull-request-title-pattern to root level ([a2a3c57](https://github.com/ttaatoo/microterm/commit/a2a3c572003f147f6075ddd7aa8d3a55d000b849))
+* **shortcuts:** change default global shortcut to Cmd+F4 ([3cd9a64](https://github.com/ttaatoo/microterm/commit/3cd9a64708ad16d55534677a8b244038e9e6a594))
+* **tauri:** enable devtools and disable CSP for debugging ([a0da82d](https://github.com/ttaatoo/microterm/commit/a0da82df281efe1194ed9e55de97774f7e036aab))
+* **tauri:** use full semver and fix bundle identifier ([7467b74](https://github.com/ttaatoo/microterm/commit/7467b741e04ed58d82925097acd644979747730f))
+
 ## [1.4.0](https://github.com/ttaatoo/microterm/compare/v1.3.1...v1.4.0) (2026-01-14)
 
 
