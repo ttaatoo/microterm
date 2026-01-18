@@ -1,21 +1,14 @@
-import { style, globalStyle, keyframes } from "@vanilla-extract/css";
+import { globalStyle, keyframes, style } from "@vanilla-extract/css";
 
-export const splitContainer = style({
-  display: "flex",
+export const gridContainer = style({
+  display: "grid",
   width: "100%",
   height: "100%",
   overflow: "hidden",
+  position: "relative",
 });
 
-export const splitContainerVertical = style({
-  flexDirection: "row",
-});
-
-export const splitContainerHorizontal = style({
-  flexDirection: "column",
-});
-
-export const paneWrapper = style({
+export const paneCell = style({
   position: "relative",
   overflow: "hidden",
   minWidth: 0,
@@ -23,9 +16,16 @@ export const paneWrapper = style({
 });
 
 // Explicit style to prevent CSS loading flash
-// The ::before pseudo-element provides the visual indicator
-export const paneWrapperActive = style({
+export const paneCellActive = style({
   position: "relative",
+});
+
+// Empty cell style (for grid cells without panes)
+export const emptyCell = style({
+  position: "relative",
+  minWidth: 0,
+  minHeight: 0,
+  backgroundColor: "transparent",
 });
 
 // Fade in animation for initial render
@@ -41,7 +41,7 @@ const breathe = keyframes({
 });
 
 // Active pane indicator - purple breathing orb in top-left corner
-globalStyle(`${paneWrapperActive}::before`, {
+globalStyle(`${paneCellActive}::before`, {
   content: '""',
   position: "absolute",
   top: "4px",
@@ -56,16 +56,4 @@ globalStyle(`${paneWrapperActive}::before`, {
   opacity: 0,
   // Wait 500ms for prompt, then fade in (300ms), then breathe infinitely
   animation: `${fadeIn} 0.3s ease-out 0.5s both, ${breathe} 2s ease-in-out 0.8s infinite`,
-});
-
-export const tabContainer = style({
-  position: "absolute",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-});
-
-export const tabHidden = style({
-  display: "none",
 });

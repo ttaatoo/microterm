@@ -1,8 +1,8 @@
+import GridPaneContainer from "@/components/GridPaneContainer";
 import { GearIcon } from "@/components/icons";
 import Onboarding from "@/components/Onboarding";
 import SearchBar from "@/components/SearchBar";
 import SettingsPanel from "@/components/SettingsPanel";
-import SplitPaneContainer from "@/components/SplitPaneContainer";
 import TabBar from "@/components/TabBar";
 import { ToastContainer } from "@/components/Toast";
 import { type XTerminalHandle } from "@/components/XTerminal";
@@ -25,7 +25,7 @@ function TerminalViewInner() {
   const terminalRefs = useRef<Map<string, Map<string, XTerminalHandle>>>(new Map());
   const { tabs, activeTabId, updateTabTitle } = useTabContext();
   const {
-    getPaneTree,
+    getPaneGrid,
     getActivePaneId,
     getAllPanes,
     initializeTabPanes,
@@ -49,12 +49,12 @@ function TerminalViewInner() {
   // Initialize pane state for each tab
   useEffect(() => {
     for (const tab of tabs) {
-      const paneTree = getPaneTree(tab.id);
-      if (!paneTree) {
+      const paneGrid = getPaneGrid(tab.id);
+      if (!paneGrid) {
         initializeTabPanes(tab.id);
       }
     }
-  }, [tabs, getPaneTree, initializeTabPanes]);
+  }, [tabs, getPaneGrid, initializeTabPanes]);
 
   // Clean up pane state when tabs are closed
   const prevTabIds = useRef<Set<string>>(new Set());
@@ -94,8 +94,8 @@ function TerminalViewInner() {
     // Build current pane sessions map
     const currentPaneSessions = new Map<string, Map<string, string | null>>();
     for (const tab of tabs) {
-      const paneTree = getPaneTree(tab.id);
-      if (paneTree) {
+      const paneGrid = getPaneGrid(tab.id);
+      if (paneGrid) {
         const panes = getAllPanes(tab.id);
         const paneMap = new Map<string, string | null>();
         for (const pane of panes) {
@@ -139,7 +139,7 @@ function TerminalViewInner() {
     }
 
     prevPaneSessionsRef.current = currentPaneSessions;
-  }, [tabs, getPaneTree, getAllPanes]);
+  }, [tabs, getPaneGrid, getAllPanes]);
 
   // Get the active terminal ref (for search)
   const getActiveTerminal = useCallback(() => {
@@ -251,20 +251,20 @@ function TerminalViewInner() {
       />
       <div className={styles.terminalArea}>
         {tabs.map((tab) => {
-          const paneTree = getPaneTree(tab.id);
+          const paneGrid = getPaneGrid(tab.id);
           const activePaneId = getActivePaneId(tab.id);
           const isTabVisible = tab.id === activeTabId;
 
-          if (!paneTree || !activePaneId) {
+          if (!paneGrid || !activePaneId) {
             // Pane state not yet initialized
             return null;
           }
 
           return (
             <div key={tab.id} className={isTabVisible ? styles.tabContainer : styles.tabHidden}>
-              <SplitPaneContainer
+              <GridPaneContainer
                 tabId={tab.id}
-                node={paneTree}
+                grid={paneGrid}
                 activePaneId={activePaneId}
                 opacity={opacity ?? 0.95}
                 fontSize={fontSize ?? 13}

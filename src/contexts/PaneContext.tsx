@@ -1,45 +1,47 @@
 import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useMemo,
-  type ReactNode,
-} from "react";
-import {
-  createLeafPane,
-  splitPane,
-  removePane,
-  updateBranchRatio,
-  updatePaneSession,
-  findNextPaneAfterClose,
-  getAllLeaves,
-  countLeaves,
-  type PaneNode,
-  type PaneLeaf,
+  countPanes,
+  createGridWithPane,
+  findNextPaneAfterClose as findNextPaneAfterCloseGrid,
+  getAllPanes as getAllPanesGrid,
+  removePane as removePaneGrid,
+  resizeColDivider,
+  resizeRowDivider,
+  splitPane as splitPaneGrid,
+  updateColWidths,
+  updatePaneSession as updatePaneSessionGrid,
+  updateRowHeights,
+  type GridPane,
+  type PaneGrid,
   type SplitDirection,
-} from "@/lib/paneTree";
+} from "@/lib/paneGrid";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 // ============== Types ==============
 
 /** Pane state for a single tab */
 export interface TabPaneState {
-  root: PaneNode;
+  grid: PaneGrid;
   activePaneId: string;
 }
+
+// Compatibility type: GridPane is compatible with PaneLeaf for API compatibility
+export type PaneLeaf = GridPane;
 
 interface PaneContextValue {
   /** Get pane state for a tab */
   getPaneState: (tabId: string) => TabPaneState | undefined;
 
-  /** Get the pane tree for a tab */
-  getPaneTree: (tabId: string) => PaneNode | null;
+  /** Get the pane grid for a tab (returns null for compatibility with old API) */
+  getPaneTree: (tabId: string) => null; // Deprecated: kept for API compatibility
+
+  /** Get the pane grid for a tab */
+  getPaneGrid: (tabId: string) => PaneGrid | null;
 
   /** Get the active pane ID for a tab */
   getActivePaneId: (tabId: string) => string | null;
 
-  /** Get all leaf panes for a tab */
-  getAllPanes: (tabId: string) => PaneLeaf[];
+  /** Get all panes for a tab */
+  getAllPanes: (tabId: string) => GridPane[];
 
   /** Get pane count for a tab */
   getPaneCount: (tabId: string) => number;
@@ -62,8 +64,17 @@ interface PaneContextValue {
   /** Update a pane's session ID */
   updatePaneSessionId: (tabId: string, paneId: string, sessionId: string) => void;
 
-  /** Update a branch's split ratio */
-  resizeSplit: (tabId: string, branchId: string, newRatio: number) => void;
+  /** Update row heights (for grid resizing) */
+  updateRowHeights: (tabId: string, rowIndex: number, newHeight: number) => void;
+
+  /** Update column widths (for grid resizing) */
+  updateColWidths: (tabId: string, colIndex: number, newWidth: number) => void;
+
+  /** Resize row divider (between two rows) */
+  resizeRowDivider: (tabId: string, dividerIndex: number, newTotalRatio: number) => void;
+
+  /** Resize column divider (between two columns) */
+  resizeColDivider: (tabId: string, dividerIndex: number, newTotalRatio: number) => void;
 }
 
 // ============== Context ==============
@@ -76,13 +87,15 @@ export function PaneProvider({ children }: { children: ReactNode }) {
   // Map of tabId -> TabPaneState
   const [paneStates, setPaneStates] = useState<Map<string, TabPaneState>>(new Map());
 
-  const getPaneState = useCallback(
-    (tabId: string) => paneStates.get(tabId),
-    [paneStates]
-  );
+  const getPaneState = useCallback((tabId: string) => paneStates.get(tabId), [paneStates]);
 
-  const getPaneTree = useCallback(
-    (tabId: string) => paneStates.get(tabId)?.root ?? null,
+  const getPaneTree = useCallback(() => {
+    // Deprecated: kept for API compatibility, always returns null
+    return null;
+  }, []);
+
+  const getPaneGrid = useCallback(
+    (tabId: string) => paneStates.get(tabId)?.grid ?? null,
     [paneStates]
   );
 
@@ -94,7 +107,7 @@ export function PaneProvider({ children }: { children: ReactNode }) {
   const getAllPanes = useCallback(
     (tabId: string) => {
       const state = paneStates.get(tabId);
-      return state ? getAllLeaves(state.root) : [];
+      return state ? getAllPanesGrid(state.grid) : [];
     },
     [paneStates]
   );
@@ -102,22 +115,23 @@ export function PaneProvider({ children }: { children: ReactNode }) {
   const getPaneCount = useCallback(
     (tabId: string) => {
       const state = paneStates.get(tabId);
-      return state ? countLeaves(state.root) : 0;
+      return state ? countPanes(state.grid) : 0;
     },
     [paneStates]
   );
 
   const initializeTabPanes = useCallback((tabId: string) => {
-    const initialPane = createLeafPane();
+    const grid = createGridWithPane();
+    const initialPaneId = Array.from(grid.panes.values())[0].id;
     setPaneStates((prev) => {
       const next = new Map(prev);
       next.set(tabId, {
-        root: initialPane,
-        activePaneId: initialPane.id,
+        grid,
+        activePaneId: initialPaneId,
       });
       return next;
     });
-    return initialPane.id;
+    return initialPaneId;
   }, []);
 
   const cleanupTabPanes = useCallback((tabId: string) => {
@@ -139,7 +153,7 @@ export function PaneProvider({ children }: { children: ReactNode }) {
           return prev;
         }
 
-        const result = splitPane(state.root, paneId, direction);
+        const result = splitPaneGrid(state.grid, paneId, direction);
         if (!result) {
           console.warn(`[PaneContext] Failed to split pane ${paneId} in tab ${tabId}`);
           return prev;
@@ -148,7 +162,7 @@ export function PaneProvider({ children }: { children: ReactNode }) {
         newPaneId = result.newPaneId;
         const next = new Map(prev);
         next.set(tabId, {
-          root: result.tree,
+          grid: result.grid,
           activePaneId: result.newPaneId, // Focus the new pane
         });
         return next;
@@ -170,15 +184,15 @@ export function PaneProvider({ children }: { children: ReactNode }) {
       }
 
       // Find next pane to focus before removing
-      const nextPaneId = findNextPaneAfterClose(state.root, paneId);
+      const nextPaneId = findNextPaneAfterCloseGrid(state.grid, paneId);
 
-      const newTree = removePane(state.root, paneId);
-      if (newTree === null) {
+      const newGrid = removePaneGrid(state.grid, paneId);
+      if (newGrid === null) {
         console.warn(`[PaneContext] Cannot remove last pane ${paneId} in tab ${tabId}`);
         return prev;
       }
 
-      if (newTree === state.root) {
+      if (newGrid === state.grid) {
         console.warn(`[PaneContext] Pane ${paneId} not found in tab ${tabId}`);
         return prev;
       }
@@ -186,7 +200,7 @@ export function PaneProvider({ children }: { children: ReactNode }) {
       success = true;
       const next = new Map(prev);
       next.set(tabId, {
-        root: newTree,
+        grid: newGrid,
         activePaneId: nextPaneId ?? state.activePaneId,
       });
       return next;
@@ -215,13 +229,13 @@ export function PaneProvider({ children }: { children: ReactNode }) {
         const state = prev.get(tabId);
         if (!state) return prev;
 
-        const newTree = updatePaneSession(state.root, paneId, sessionId);
-        if (newTree === state.root) return prev;
+        const newGrid = updatePaneSessionGrid(state.grid, paneId, sessionId);
+        if (newGrid === state.grid) return prev;
 
         const next = new Map(prev);
         next.set(tabId, {
           ...state,
-          root: newTree,
+          grid: newGrid,
         });
         return next;
       });
@@ -229,27 +243,88 @@ export function PaneProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const resizeSplit = useCallback((tabId: string, branchId: string, newRatio: number) => {
+  const updateRowHeightsAction = useCallback(
+    (tabId: string, rowIndex: number, newHeight: number) => {
+      setPaneStates((prev) => {
+        const state = prev.get(tabId);
+        if (!state) return prev;
+
+        const newGrid = updateRowHeights(state.grid, rowIndex, newHeight);
+        if (newGrid === state.grid) return prev;
+
+        const next = new Map(prev);
+        next.set(tabId, {
+          ...state,
+          grid: newGrid,
+        });
+        return next;
+      });
+    },
+    []
+  );
+
+  const updateColWidthsAction = useCallback((tabId: string, colIndex: number, newWidth: number) => {
     setPaneStates((prev) => {
       const state = prev.get(tabId);
       if (!state) return prev;
 
-      const newTree = updateBranchRatio(state.root, branchId, newRatio);
-      if (newTree === state.root) return prev;
+      const newGrid = updateColWidths(state.grid, colIndex, newWidth);
+      if (newGrid === state.grid) return prev;
 
       const next = new Map(prev);
       next.set(tabId, {
         ...state,
-        root: newTree,
+        grid: newGrid,
       });
       return next;
     });
   }, []);
 
+  const resizeRowDividerAction = useCallback(
+    (tabId: string, dividerIndex: number, newTotalRatio: number) => {
+      setPaneStates((prev) => {
+        const state = prev.get(tabId);
+        if (!state) return prev;
+
+        const newGrid = resizeRowDivider(state.grid, dividerIndex, newTotalRatio);
+        if (newGrid === state.grid) return prev;
+
+        const next = new Map(prev);
+        next.set(tabId, {
+          ...state,
+          grid: newGrid,
+        });
+        return next;
+      });
+    },
+    []
+  );
+
+  const resizeColDividerAction = useCallback(
+    (tabId: string, dividerIndex: number, newTotalRatio: number) => {
+      setPaneStates((prev) => {
+        const state = prev.get(tabId);
+        if (!state) return prev;
+
+        const newGrid = resizeColDivider(state.grid, dividerIndex, newTotalRatio);
+        if (newGrid === state.grid) return prev;
+
+        const next = new Map(prev);
+        next.set(tabId, {
+          ...state,
+          grid: newGrid,
+        });
+        return next;
+      });
+    },
+    []
+  );
+
   const value = useMemo<PaneContextValue>(
     () => ({
       getPaneState,
       getPaneTree,
+      getPaneGrid,
       getActivePaneId,
       getAllPanes,
       getPaneCount,
@@ -259,11 +334,15 @@ export function PaneProvider({ children }: { children: ReactNode }) {
       closePane: closePaneAction,
       setActivePane,
       updatePaneSessionId: updatePaneSessionIdAction,
-      resizeSplit,
+      updateRowHeights: updateRowHeightsAction,
+      updateColWidths: updateColWidthsAction,
+      resizeRowDivider: resizeRowDividerAction,
+      resizeColDivider: resizeColDividerAction,
     }),
     [
       getPaneState,
       getPaneTree,
+      getPaneGrid,
       getActivePaneId,
       getAllPanes,
       getPaneCount,
@@ -273,7 +352,10 @@ export function PaneProvider({ children }: { children: ReactNode }) {
       closePaneAction,
       setActivePane,
       updatePaneSessionIdAction,
-      resizeSplit,
+      updateRowHeightsAction,
+      updateColWidthsAction,
+      resizeRowDividerAction,
+      resizeColDividerAction,
     ]
   );
 
