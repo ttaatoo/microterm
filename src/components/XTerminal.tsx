@@ -1,13 +1,13 @@
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react";
+import { useCwdPolling } from "@/hooks/useCwdPolling";
+import { useTerminalFocus } from "@/hooks/useTerminalFocus";
+import { useTerminalInput } from "@/hooks/useTerminalInput";
 import { useTerminalInstance } from "@/hooks/useTerminalInstance";
+import { useTerminalKeyboard } from "@/hooks/useTerminalKeyboard";
 import { useTerminalPty } from "@/hooks/useTerminalPty";
 import { useTerminalResize } from "@/hooks/useTerminalResize";
-import { useTerminalInput } from "@/hooks/useTerminalInput";
-import { useTerminalKeyboard } from "@/hooks/useTerminalKeyboard";
-import { useTerminalFocus } from "@/hooks/useTerminalFocus";
-import { useCwdPolling } from "@/hooks/useCwdPolling";
 import { useXTermSearch, type XTermSearchOptions } from "@/hooks/useXTermSearch";
 import "@xterm/xterm/css/xterm.css";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import * as styles from "./XTerminal.css";
 
 export type { XTermSearchOptions as SearchOptions };
@@ -31,6 +31,16 @@ export interface XTerminalHandle {
   searchPrevious: () => boolean;
   clearSearch: () => void;
   focus: () => void;
+  /**
+   * Get the underlying terminal instance.
+   * Used by split pane operations to control layout behavior.
+   */
+  getTerminalInstance: () => { disableLayout: boolean } | null;
+  /**
+   * Set the disableLayout flag on the terminal instance.
+   * Used to prevent scroll position jumps during split operations.
+   */
+  setDisableLayout: (disabled: boolean) => void;
 }
 
 /**
@@ -95,6 +105,7 @@ const XTerminalInner = forwardRef<XTerminalHandle, XTerminalProps>(function XTer
     fitAddon: terminalInstance?.fitAddon ?? null,
     ptyManager,
     isVisible,
+    terminalInstance,  // Pass instance for disableLayout check
   });
 
   // Search functionality
@@ -174,6 +185,14 @@ const XTerminalInner = forwardRef<XTerminalHandle, XTerminalProps>(function XTer
       clearSearch,
       focus: () => {
         terminalInstance?.terminal.focus();
+      },
+      getTerminalInstance: () => {
+        return terminalInstance;
+      },
+      setDisableLayout: (disabled: boolean) => {
+        if (terminalInstance) {
+          terminalInstance.disableLayout = disabled;
+        }
       },
     }),
     [search, searchNext, searchPrevious, clearSearch, terminalInstance]

@@ -15,6 +15,8 @@ describe("useTerminalSearch", () => {
       searchPrevious: vi.fn().mockReturnValue(true),
       clearSearch: vi.fn(),
       focus: vi.fn(),
+      getTerminalInstance: vi.fn().mockReturnValue(null),
+      setDisableLayout: vi.fn(),
     };
     getActiveTerminal = vi.fn(() => mockTerminal);
   });

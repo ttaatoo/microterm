@@ -10,6 +10,11 @@ export interface UseTerminalResizeOptions {
   fitAddon: ReturnType<typeof setupTerminalAddons>["fitAddon"] | null;
   ptyManager: PtyManager | null;
   isVisible?: boolean;
+  /**
+   * Terminal instance with disableLayout flag.
+   * When disableLayout is true, resize operations are skipped.
+   */
+  terminalInstance?: { disableLayout: boolean } | null;
 }
 
 /**
@@ -22,6 +27,7 @@ export function useTerminalResize({
   fitAddon,
   ptyManager,
   isVisible = true,
+  terminalInstance = null,
 }: UseTerminalResizeOptions) {
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [windowVisible, setWindowVisible] = useState(() => !checkTauriAvailable());
@@ -57,6 +63,12 @@ export function useTerminalResize({
 
     rafIdRef.current = requestAnimationFrame(() => {
       rafIdRef.current = null;
+
+      // Skip resize if layout is disabled (e.g., during split pane operations)
+      // This prevents scroll position jumps by avoiding fit operations when the DOM is being manipulated
+      if (terminalInstance?.disableLayout) {
+        return;
+      }
 
       if (!windowVisible || !terminal || !fitAddon || !ptyManager || !containerRef.current) {
         return;

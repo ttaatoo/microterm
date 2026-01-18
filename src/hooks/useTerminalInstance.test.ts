@@ -238,7 +238,7 @@ describe("useTerminalInstance", () => {
       expect(secondTerminal?.element).toBe(firstElement);
     });
 
-    it("should preserve scroll position on cache hit", () => {
+    it("should preserve disableLayout flag on cache hit", () => {
       // First mount
       const { result: result1, unmount: unmount1 } = renderHook(() =>
         useTerminalInstance({
@@ -247,19 +247,9 @@ describe("useTerminalInstance", () => {
         })
       );
 
-      const terminal = result1.current?.terminal;
-      expect(terminal).toBeDefined();
-
-      // Mock the scroll position by replacing the buffer object
-      if (terminal) {
-        Object.defineProperty(terminal, "buffer", {
-          value: {
-            active: { viewportY: 42 },
-          },
-          writable: true,
-          configurable: true,
-        });
-      }
+      const instance1 = result1.current;
+      expect(instance1).toBeDefined();
+      expect(instance1?.disableLayout).toBe(false);
 
       unmount1();
 
@@ -268,22 +258,18 @@ describe("useTerminalInstance", () => {
       document.body.appendChild(div2);
       const containerRef2 = { current: div2 };
 
-      // Second mount with same paneId - should restore scroll position
-      renderHook(() =>
+      // Second mount with same paneId - should reuse cached instance
+      const { result: result2 } = renderHook(() =>
         useTerminalInstance({
           containerRef: containerRef2,
           paneId: "pane-2",
         })
       );
 
-      // Wait for requestAnimationFrame
-      return new Promise<void>((resolve) => {
-        requestAnimationFrame(() => {
-          // Should restore to saved scroll position (42)
-          expect(terminal?.scrollToLine).toHaveBeenCalledWith(42);
-          resolve();
-        });
-      });
+      const instance2 = result2.current;
+      expect(instance2).toBeDefined();
+      expect(instance2).toBe(instance1);
+      expect(instance2?.disableLayout).toBe(false);
     });
 
     it("should not cache terminal when paneId is not provided", () => {

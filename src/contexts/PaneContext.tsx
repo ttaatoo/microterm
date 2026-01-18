@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
 import {
@@ -64,6 +65,12 @@ interface PaneContextValue {
 
   /** Update a branch's split ratio */
   resizeSplit: (tabId: string, branchId: string, newRatio: number) => void;
+
+  /**
+   * Register a callback to control terminal layout during split operations.
+   * The callback receives pane IDs and should disable/enable layout on those terminals.
+   */
+  registerLayoutController: (controller: (tabId: string, paneIds: string[], disable: boolean) => void) => void;
 }
 
 // ============== Context ==============
@@ -75,6 +82,9 @@ const PaneContext = createContext<PaneContextValue | null>(null);
 export function PaneProvider({ children }: { children: ReactNode }) {
   // Map of tabId -> TabPaneState
   const [paneStates, setPaneStates] = useState<Map<string, TabPaneState>>(new Map());
+
+  // Layout controller callback (provided by TerminalView)
+  const layoutControllerRef = useRef<((tabId: string, paneIds: string[], disable: boolean) => void) | null>(null);
 
   const getPaneState = useCallback(
     (tabId: string) => paneStates.get(tabId),
@@ -132,6 +142,22 @@ export function PaneProvider({ children }: { children: ReactNode }) {
     (tabId: string, paneId: string, direction: SplitDirection) => {
       let newPaneId: string | null = null;
 
+      // Get existing pane IDs before split
+      const state = paneStates.get(tabId);
+      if (!state) {
+        console.warn(`[PaneContext] Cannot split pane: tab ${tabId} not found`);
+        return null;
+      }
+
+      const existingPanes = getAllLeaves(state.root);
+      const existingPaneIds = existingPanes.map(p => p.id);
+
+      // Disable layout for existing terminals during split operation
+      // This prevents scroll position jumps caused by resize operations
+      if (layoutControllerRef.current) {
+        layoutControllerRef.current(tabId, existingPaneIds, true);
+      }
+
       setPaneStates((prev) => {
         const state = prev.get(tabId);
         if (!state) {
@@ -154,9 +180,17 @@ export function PaneProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
+      // Re-enable layout after split operation completes
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        if (layoutControllerRef.current) {
+          layoutControllerRef.current(tabId, existingPaneIds, false);
+        }
+      });
+
       return newPaneId;
     },
-    []
+    [paneStates]
   );
 
   const closePaneAction = useCallback((tabId: string, paneId: string) => {
@@ -246,6 +280,13 @@ export function PaneProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const registerLayoutController = useCallback(
+    (controller: (tabId: string, paneIds: string[], disable: boolean) => void) => {
+      layoutControllerRef.current = controller;
+    },
+    []
+  );
+
   const value = useMemo<PaneContextValue>(
     () => ({
       getPaneState,
@@ -260,6 +301,7 @@ export function PaneProvider({ children }: { children: ReactNode }) {
       setActivePane,
       updatePaneSessionId: updatePaneSessionIdAction,
       resizeSplit,
+      registerLayoutController,
     }),
     [
       getPaneState,
@@ -274,6 +316,7 @@ export function PaneProvider({ children }: { children: ReactNode }) {
       setActivePane,
       updatePaneSessionIdAction,
       resizeSplit,
+      registerLayoutController,
     ]
   );
 

@@ -32,6 +32,7 @@ function TerminalViewInner() {
     cleanupTabPanes,
     setActivePane,
     updatePaneSessionId,
+    registerLayoutController,
   } = usePaneContext();
 
   // Toast notifications
@@ -45,6 +46,24 @@ function TerminalViewInner() {
       },
     });
   // NOTE: handleResize removed - window resize now handled automatically by Rust backend
+
+  // Register layout controller for split operations
+  // This allows PaneContext to disable/enable terminal layout during splits
+  useEffect(() => {
+    const controller = (tabId: string, paneIds: string[], disable: boolean) => {
+      const tabRefs = terminalRefs.current.get(tabId);
+      if (!tabRefs) return;
+
+      for (const paneId of paneIds) {
+        const handle = tabRefs.get(paneId);
+        if (handle) {
+          handle.setDisableLayout(disable);
+        }
+      }
+    };
+
+    registerLayoutController(controller);
+  }, [registerLayoutController]);
 
   // Initialize pane state for each tab
   useEffect(() => {

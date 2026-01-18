@@ -17,6 +17,12 @@ export interface TerminalInstance {
   fitAddon: ReturnType<typeof setupTerminalAddons>["fitAddon"];
   searchAddon: ReturnType<typeof setupTerminalAddons>["searchAddon"];
   webglAddon: ReturnType<typeof setupTerminalAddons>["webglAddon"];
+  /**
+   * Flag to temporarily disable layout/resize operations.
+   * Used during split pane operations to prevent scroll position jumps.
+   * Inspired by VSCode's terminal group implementation.
+   */
+  disableLayout: boolean;
 }
 
 // Global cache for terminal instances by paneId
@@ -93,9 +99,6 @@ export function useTerminalInstance({
         containerRef.current.appendChild(element);
       }
 
-      // Save current scroll position before any operations
-      const savedScrollY = cachedInstance.terminal.buffer.active.viewportY;
-
       // Reinitialize WebGL if needed
       if (cachedInstance.webglAddon) {
         try {
@@ -111,12 +114,6 @@ export function useTerminalInstance({
       // Refresh and fit
       cachedInstance.terminal.refresh(0, cachedInstance.terminal.rows - 1);
       cachedInstance.fitAddon.fit();
-
-      // Restore scroll position after refresh/fit
-      // Use requestAnimationFrame to ensure operations are complete
-      requestAnimationFrame(() => {
-        cachedInstance.terminal.scrollToLine(savedScrollY);
-      });
 
       setInstance(cachedInstance);
       return () => {
@@ -159,7 +156,13 @@ export function useTerminalInstance({
       terminal.onData(onData);
     }
 
-    const newInstance = { terminal, fitAddon, searchAddon, webglAddon };
+    const newInstance: TerminalInstance = {
+      terminal,
+      fitAddon,
+      searchAddon,
+      webglAddon,
+      disableLayout: false  // Initialize as enabled
+    };
 
     // Cache the terminal if paneId is provided
     if (paneId) {
